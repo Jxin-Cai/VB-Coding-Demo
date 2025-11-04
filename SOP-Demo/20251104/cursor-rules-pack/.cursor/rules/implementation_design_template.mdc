@@ -1,0 +1,1567 @@
+---
+alwaysApply: false
+---
+# 实现设计文档内容规范模板
+
+> **使用场景**：当需要编写或评审实现设计文档时，参考此模板确保内容完整性。
+
+---
+
+## 📐 核心规范
+
+```yaml
+implementation_design_content_standards:
+  core_rule: "⚠️ 强制要求：实现设计文档必须包含完整的技术细节和使用指南"
+  severity: "CRITICAL - 文档必须具备可执行性和可理解性"
+  motto: "设计文档不仅要说清楚'是什么'，更要说清楚'怎么用'"
+  
+  # ===== 必需内容清单 =====
+  mandatory_content_checklist:
+    item_1_interface_definition:
+      name: "接口定义（如果有）"
+      required: true
+      condition: "涉及对外API、Service接口、RPC接口时必须定义"
+      content:
+        - "接口签名：方法名、返回值类型、参数类型"
+        - "入参说明：每个参数的含义、类型、约束、示例值"
+        - "出参说明：返回值结构、字段含义、可能的状态码"
+        - "异常说明：可能抛出的异常类型和原因"
+```
+
+---
+
+## 1️⃣ 接口定义规范
+
+### 适用场景
+- 对外提供的HTTP API接口
+- Service层的业务接口
+- RPC/Feign远程调用接口
+- 对接第三方的接口
+
+### 必需内容
+
+#### 1.1 接口签名
+```java
+public CalculationResult selectSecurityScene(
+    SceneSelectionRequest request
+) throws BusinessException
+```
+
+#### 1.2 入参说明表格
+
+| 参数名 | 类型 | 必填 | 说明 | 约束条件 | 示例值 |
+|-------|------|-----|------|---------|--------|
+| request | SceneSelectionRequest | 是 | 场景选型请求对象 | - | - |
+| request.industryCode | Integer | 是 | 客户行业代码 | 1-99 | 1（金融） |
+| request.scenarioType | String | 是 | 场景类型 | 枚举值 | "AI_SECURITY_PLATFORM" |
+| request.subScenario | String | 否 | 子场景 | 枚举值 | "NETWORK_DATA_FUSION" |
+| request.userInputParams | Map<String, String> | 是 | 用户输入参数 | 非空 | {"dailyEPS": "5000"} |
+
+**参数校验规则**：
+- `industryCode`：必须在系统支持的行业列表中
+- `scenarioType`：必须匹配 `ScenarioTypeEnum` 枚举值
+- `userInputParams`：根据场景类型验证必填参数
+
+#### 1.3 出参说明表格
+
+| 字段名 | 类型 | 说明 | 可能的值 |
+|-------|------|------|---------|
+| calculationResult | CalculationResult | 计算结果对象 | - |
+| calculationResult.success | Boolean | 是否成功 | true/false |
+| calculationResult.materialItems | List<MaterialItem> | 物料清单 | - |
+| calculationResult.totalAmount | BigDecimal | 总金额 | ≥0 |
+| calculationResult.warningMessages | List<String> | 警告信息列表 | - |
+| calculationResult.errorCode | String | 错误码 | 业务错误码 |
+
+**返回值结构示例**：
+```json
+{
+  "success": true,
+  "materialItems": [
+    {
+      "productCode": "GPU-A100-80G",
+      "productName": "NVIDIA A100 80GB显卡",
+      "quantity": 16,
+      "unitPrice": 80000.00,
+      "totalPrice": 1280000.00
+    }
+  ],
+  "totalAmount": 1280000.00,
+  "warningMessages": [],
+  "errorCode": null
+}
+```
+
+#### 1.4 异常说明
+
+| 异常类型 | 触发条件 | 错误码 | 处理建议 |
+|---------|---------|-------|---------|
+| `IllegalArgumentException` | 参数校验失败 | PARAM_INVALID | 检查参数格式和约束 |
+| `BusinessException` | 业务规则校验失败 | BIZ_ERROR | 查看错误消息说明 |
+| `NotFoundException` | 数据不存在 | NOT_FOUND | 确认数据是否已创建 |
+| `SystemException` | 系统异常 | SYSTEM_ERROR | 联系技术支持 |
+
+---
+
+## 2️⃣ 类/方法注释规范
+
+### 核心原则
+> **注释要说清楚使用场景和使用方法，提供可运行的示例代码**
+
+### 2.1 类注释模板
+
+```java
+/**
+ * AI安全场景选型计算器
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.scene.calculator
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ * 
+ * <p><b>职责说明</b>：
+ * 根据客户行业、场景类型和用户输入参数，计算所需的物料清单和价格。
+ * 
+ * <p><b>适用场景</b>：
+ * <ul>
+ *   <li>AI安全平台场景（网数融合、态势感知）</li>
+ *   <li>AI安全运营场景（SOC、日志分析）</li>
+ * </ul>
+ * 
+ * <p><b>核心能力</b>：
+ * <ol>
+ *   <li>场景识别：根据行业和场景类型匹配规则</li>
+ *   <li>EPS计算：基于日志量计算每日EPS</li>
+ *   <li>物料生成：根据计算结果生成物料清单</li>
+ * </ol>
+ * 
+ * <p><b>使用示例</b>：
+ * <pre>{@code
+ * // 1. 构建请求参数
+ * Map<String, String> params = new HashMap<>();
+ * params.put("dailyLogVolume", "500"); // 每日日志量（GB）
+ * params.put("retentionDays", "180");  // 日志保留天数
+ * 
+ * SceneSelectionRequest request = SceneSelectionRequest.builder()
+ *     .industryCode(1) // 金融行业
+ *     .scenarioType("AI_SECURITY_PLATFORM")
+ *     .subScenario("NETWORK_DATA_FUSION")
+ *     .userInputParams(params)
+ *     .build();
+ * 
+ * // 2. 调用计算器
+ * SceneCalculator calculator = new SceneCalculator();
+ * CalculationResult result = calculator.calculate(request);
+ * 
+ * // 3. 获取结果
+ * List<MaterialItem> materials = result.getMaterialItems();
+ * BigDecimal totalAmount = result.getTotalAmount();
+ * System.out.println("物料数量：" + materials.size());
+ * System.out.println("总金额：" + totalAmount);
+ * }</pre>
+ * 
+ * <p><b>依赖说明</b>：
+ * <ul>
+ *   <li>依赖 {@link SceneRuleService} (com.sangfor.cpq.scene.service) 查询规则配置</li>
+ *   <li>依赖 {@link ProductService} (com.sangfor.cpq.product.service) 查询产品信息</li>
+ *   <li>依赖 {@link PriceCalculator} (com.sangfor.cpq.price.calculator) 计算价格</li>
+ * </ul>
+ * 
+ * <p><b>线程安全性</b>：本类是线程安全的（或：本类非线程安全，每次使用请创建新实例）
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ * @see CalculationResult
+ * @see SceneSelectionRequest
+ * @since 1.0.0
+ */
+public class SceneCalculator {
+    // ...
+}
+```
+
+### 2.2 方法注释模板
+
+```java
+/**
+ * 计算EPS（每秒事件数）
+ * 
+ * <p><b>功能说明</b>：
+ * 根据每日日志量和峰值因子计算每日EPS，用于确定所需的日志分析能力。
+ * 
+ * <p><b>计算公式</b>：
+ * <pre>
+ * EPS = (dailyLogVolume * 1024 * 1024 * 1024) / (24 * 3600) * peakFactor
+ * 最终结果向上取整到百位
+ * </pre>
+ * 
+ * <p><b>业务规则</b>：
+ * <ul>
+ *   <li>金融行业默认峰值因子：2.0</li>
+ *   <li>政府行业默认峰值因子：1.8</li>
+ *   <li>制造行业默认峰值因子：1.5</li>
+ * </ul>
+ * 
+ * @param dailyLogVolume 每日日志量（GB），有效范围：1-10000
+ * @param peakFactor 峰值因子，有效范围：1.0-5.0，推荐值2.0
+ * @return 每日EPS值（向上取整到百位），单位：事件/秒
+ * @throws IllegalArgumentException 当参数超出有效范围时
+ * 
+ * <p><b>使用示例1 - 基础用法</b>：
+ * <pre>{@code
+ * EpsCalculator calculator = new EpsCalculator();
+ * 
+ * // 金融行业，500GB日志，使用默认峰值因子
+ * BigDecimal eps = calculator.calculateEPS(500, 2.0);
+ * // 结果：约5800 EPS
+ * System.out.println("计算EPS：" + eps);
+ * }</pre>
+ * 
+ * <p><b>使用示例2 - 不同行业场景</b>：
+ * <pre>{@code
+ * EpsCalculator calculator = new EpsCalculator();
+ * 
+ * // 政府行业，1000GB日志，峰值因子1.8
+ * BigDecimal govEps = calculator.calculateEPS(1000, 1.8);
+ * System.out.println("政府行业EPS：" + govEps);
+ * 
+ * // 制造行业，300GB日志，峰值因子1.5
+ * BigDecimal mfgEps = calculator.calculateEPS(300, 1.5);
+ * System.out.println("制造行业EPS：" + mfgEps);
+ * }</pre>
+ * 
+ * <p><b>使用示例3 - 异常处理</b>：
+ * <pre>{@code
+ * EpsCalculator calculator = new EpsCalculator();
+ * 
+ * try {
+ *     // 参数超出范围会抛出异常
+ *     BigDecimal eps = calculator.calculateEPS(20000, 2.0);
+ * } catch (IllegalArgumentException e) {
+ *     log.error("参数校验失败：{}", e.getMessage());
+ *     // 使用默认值或提示用户修正
+ * }
+ * }</pre>
+ * 
+ * @see #calculateEPSWithDefault(int) 使用默认峰值因子的简化方法
+ */
+public BigDecimal calculateEPS(int dailyLogVolume, double peakFactor) {
+    // 参数校验
+    if (dailyLogVolume < 1 || dailyLogVolume > 10000) {
+        throw new IllegalArgumentException(
+            "每日日志量必须在1-10000GB之间，当前值：" + dailyLogVolume
+        );
+    }
+    if (peakFactor < 1.0 || peakFactor > 5.0) {
+        throw new IllegalArgumentException(
+            "峰值因子必须在1.0-5.0之间，当前值：" + peakFactor
+        );
+    }
+    
+    // 计算逻辑
+    // ...
+}
+```
+
+### 2.3 卫语句（Guard Clause）使用规范
+
+#### 核心原则
+> **优先处理异常/边界情况并提前返回，让正常业务逻辑保持扁平清晰**
+
+#### 为什么使用卫语句？
+- ✅ **减少嵌套**：避免深层的if-else嵌套，代码更扁平
+- ✅ **逻辑清晰**：异常情况集中在前面，正常流程在后面
+- ✅ **易于维护**：新增校验只需在前面追加，不影响主流程
+- ✅ **符合快速失败原则**：问题尽早发现，尽早返回
+
+#### 卫语句模式
+
+```java
+/**
+ * 场景选型主流程
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.scene.service.impl
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+public CalculationResult selectScene(SceneSelectionRequest request) {
+    log.info("开始场景选型计算，请求参数：{}", request);
+    
+    // 参数非空校验
+    if (request == null) {
+        log.error("请求参数不能为空");
+        throw new IllegalArgumentException("请求参数不能为空");
+    }
+    
+    // 必填字段校验
+    if (request.getIndustryCode() == null) {
+        log.error("行业代码不能为空");
+        throw new IllegalArgumentException("行业代码不能为空");
+    }
+    if (StringUtils.isBlank(request.getScenarioType())) {
+        log.error("场景类型不能为空");
+        throw new IllegalArgumentException("场景类型不能为空");
+    }
+    
+    // 业务规则校验
+    List<SceneRule> rules = sceneMatcher.matchRules(
+        request.getIndustryCode(), 
+        request.getScenarioType()
+    );
+    if (CollectionUtils.isEmpty(rules)) {
+        log.warn("未找到匹配的场景规则，industryCode: {}, scenarioType: {}", 
+            request.getIndustryCode(), request.getScenarioType());
+        throw new BusinessException("未找到匹配的场景规则");
+    }
+    
+    // 正常业务流程
+    try {
+        // 步骤1：EPS计算
+        BigDecimal eps = epsCalculator.calculate(
+            request.getUserInputParams(),
+            rules.get(0)
+        );
+        log.info("EPS计算完成，EPS值：{}", eps);
+        
+        // 步骤2：显卡计算
+        GraphicsCardResult cardResult = graphicsCardCalculator.calculate(
+            eps, rules, request.getUserInputParams()
+        );
+        log.info("显卡计算完成，显卡型号：{}，数量：{}", 
+            cardResult.getCardSpec(), cardResult.getCardCount());
+        
+        // 步骤3：服务器计算
+        ServerResult serverResult = serverCalculator.calculate(
+            cardResult.getCardCount(),
+            cardResult.getCardSpec(),
+            rules
+        );
+        log.info("服务器计算完成，服务器数量：{}", serverResult.getServerCount());
+        
+        // 步骤4：物料生成
+        List<MaterialItem> materials = materialGenerator.generate(
+            cardResult, serverResult, rules
+        );
+        log.info("物料生成完成，物料数量：{}", materials.size());
+        
+        // 步骤5：价格计算
+        BigDecimal totalAmount = priceCalculator.calculate(materials);
+        log.info("价格计算完成，总金额：{}", totalAmount);
+        
+        // 步骤6：构建返回结果
+        CalculationResult result = CalculationResult.builder()
+            .success(true)
+            .materialItems(materials)
+            .totalAmount(totalAmount)
+            .build();
+        
+        log.info("场景选型计算完成");
+        return result;
+        
+    } catch (IllegalArgumentException e) {
+        log.error("参数校验失败：{}", e.getMessage());
+        throw e;
+    } catch (BusinessException e) {
+        log.error("业务处理失败：{}", e.getMessage());
+        throw e;
+    } catch (Exception e) {
+        log.error("系统异常", e);
+        throw new SystemException("场景选型计算失败", e);
+    }
+}
+```
+
+#### 对比示例：不使用卫语句 vs 使用卫语句
+
+**❌ 不推荐：深层嵌套**
+```java
+public CalculationResult selectScene(SceneSelectionRequest request) {
+    if (request != null) {
+        if (request.getIndustryCode() != null) {
+            if (StringUtils.isNotBlank(request.getScenarioType())) {
+                List<SceneRule> rules = sceneMatcher.matchRules(...);
+                if (CollectionUtils.isNotEmpty(rules)) {
+                    // 正常业务逻辑（嵌套在第4层！）
+                    BigDecimal eps = epsCalculator.calculate(...);
+                    // ...
+                } else {
+                    throw new BusinessException("未找到规则");
+                }
+            } else {
+                throw new IllegalArgumentException("场景类型为空");
+            }
+        } else {
+            throw new IllegalArgumentException("行业代码为空");
+        }
+    } else {
+        throw new IllegalArgumentException("请求参数为空");
+    }
+}
+```
+
+**✅ 推荐：卫语句扁平化**
+```java
+public CalculationResult selectScene(SceneSelectionRequest request) {
+    // 优先处理异常情况
+    if (request == null) {
+        throw new IllegalArgumentException("请求参数为空");
+    }
+    if (request.getIndustryCode() == null) {
+        throw new IllegalArgumentException("行业代码为空");
+    }
+    if (StringUtils.isBlank(request.getScenarioType())) {
+        throw new IllegalArgumentException("场景类型为空");
+    }
+    
+    List<SceneRule> rules = sceneMatcher.matchRules(...);
+    if (CollectionUtils.isEmpty(rules)) {
+        throw new BusinessException("未找到规则");
+    }
+    
+    // 正常业务逻辑（扁平清晰，无嵌套）
+    BigDecimal eps = epsCalculator.calculate(...);
+    // ...
+}
+```
+
+### 2.4 注释质量检查清单
+
+✅ **必需包含的内容**：
+- [ ] 功能说明：清楚描述做什么
+- [ ] 业务规则：说明关键的业务约束
+- [ ] 参数说明：每个参数的含义、约束、示例
+- [ ] 返回值说明：返回什么、格式、单位
+- [ ] 异常说明：什么情况抛异常
+- [ ] 使用示例：至少1个可运行的完整示例
+- [ ] @author：作者信息
+- [ ] @date：创建日期
+- [ ] **包路径和项目位置**（新增必需）
+- [ ] **卫语句优化**（新增建议）：方法内有参数校验或边界检查时，使用卫语句减少嵌套
+
+❌ **避免的注释**：
+- 空洞无意义的注释（如：`// 计算` for a method named `calculate`）
+- 过时的注释（代码改了注释没改）
+- 重复代码逻辑的注释（注释和代码说同一件事）
+
+---
+
+## 3️⃣ 数据库表定义规范
+
+### 适用场景
+- 新增业务表
+- 修改现有表结构
+- 涉及数据持久化的功能
+
+### 3.1 表定义模板
+
+#### 表基本信息
+
+**表名**：`tk_sf_cpq_scene_selection_rule`
+
+**表说明**：存储AI安全场景选型的业务规则配置，支持按行业和场景类型匹配规则
+
+**存储引擎**：InnoDB
+
+**字符集**：utf8mb4
+
+#### 字段定义表格
+
+| 字段名 | 类型 | 长度 | 非空 | 默认值 | 注释 | 业务说明 |
+|-------|------|-----|-----|--------|------|---------|
+| id | BIGINT | - | 是 | 自增 | 主键ID | - |
+| rule_code | VARCHAR | 50 | 是 | - | 规则编码 | 全局唯一，如：FIN_AI_PLAT_001 |
+| rule_name | VARCHAR | 200 | 是 | - | 规则名称 | 业务可读的规则描述 |
+| industry_code | INT | - | 否 | NULL | 适用行业代码 | NULL表示全行业适用 |
+| scenario_type | VARCHAR | 50 | 是 | - | 场景类型 | 枚举值，如：AI_SECURITY_PLATFORM |
+| sub_scenario | VARCHAR | 50 | 否 | NULL | 子场景 | 枚举值，如：NETWORK_DATA_FUSION |
+| rule_expression | TEXT | - | 是 | - | 规则表达式 | JSON格式存储规则逻辑 |
+| priority | INT | - | 是 | 100 | 优先级 | 数字越小优先级越高，1-999 |
+| status | TINYINT | - | 是 | 1 | 状态 | 0-禁用，1-启用 |
+| created_by | VARCHAR | 50 | 是 | - | 创建人 | 用户ID或用户名 |
+| created_time | DATETIME | - | 是 | CURRENT_TIMESTAMP | 创建时间 | 记录创建时间 |
+| updated_by | VARCHAR | 50 | 否 | - | 更新人 | 用户ID或用户名 |
+| updated_time | DATETIME | - | 否 | NULL ON UPDATE CURRENT_TIMESTAMP | 更新时间 | 记录最后修改时间 |
+
+#### 索引定义
+
+| 索引名 | 索引类型 | 字段 | 说明 |
+|-------|---------|------|------|
+| PRIMARY | 主键 | id | - |
+| uk_rule_code | 唯一索引 | rule_code | 保证规则编码唯一 |
+| idx_industry_scenario | 普通索引 | industry_code, scenario_type | 加速按行业和场景查询 |
+| idx_status_priority | 普通索引 | status, priority | 加速启用规则的优先级排序 |
+
+#### 完整DDL
+
+```sql
+CREATE TABLE tk_sf_cpq_scene_selection_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    rule_code VARCHAR(50) NOT NULL COMMENT '规则编码，全局唯一',
+    rule_name VARCHAR(200) NOT NULL COMMENT '规则名称',
+    industry_code INT COMMENT '适用行业代码，NULL表示全行业',
+    scenario_type VARCHAR(50) NOT NULL COMMENT '场景类型',
+    sub_scenario VARCHAR(50) COMMENT '子场景',
+    rule_expression TEXT NOT NULL COMMENT '规则表达式（JSON格式）',
+    priority INT NOT NULL DEFAULT 100 COMMENT '优先级，数字越小优先级越高',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+    created_by VARCHAR(50) NOT NULL COMMENT '创建人',
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by VARCHAR(50) COMMENT '更新人',
+    updated_time DATETIME ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_rule_code (rule_code),
+    KEY idx_industry_scenario (industry_code, scenario_type),
+    KEY idx_status_priority (status, priority)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='场景选型规则表';
+```
+
+#### 示例数据
+
+```sql
+INSERT INTO tk_sf_cpq_scene_selection_rule 
+(rule_code, rule_name, industry_code, scenario_type, sub_scenario, rule_expression, priority, created_by) 
+VALUES 
+(
+    'FIN_AI_PLAT_001',
+    '金融行业-AI安全平台-网数融合场景',
+    1,
+    'AI_SECURITY_PLATFORM',
+    'NETWORK_DATA_FUSION',
+    '{"epsCalculation":{"peakFactor":2.0},"graphicsCard":{"gpuPerServer":8}}',
+    10,
+    'system'
+);
+```
+
+### 3.2 表关系图（如有多表关联）
+
+```
+┌─────────────────────────────┐
+│ tk_sf_cpq_scene_selection_rule │
+│ (场景选型规则表)              │
+└─────────────┬───────────────┘
+              │ 1
+              │
+              │ N
+┌─────────────▼───────────────┐
+│ tk_sf_cpq_material_mapping  │
+│ (物料映射表)                 │
+└─────────────┬───────────────┘
+              │ 1
+              │
+              │ N
+┌─────────────▼───────────────┐
+│ tk_sf_cpq_product           │
+│ (产品表)                     │
+└─────────────────────────────┘
+```
+
+---
+
+## 4️⃣ 能力分解与编排规范
+
+### 核心原则
+> **业务功能要拆解为子能力，明确编排逻辑和数据流向，并说明每个类的包路径和项目位置**
+
+### 4.1 能力清单模板
+
+**业务功能**：AI安全场景选型
+
+**功能目标**：根据客户需求，自动计算所需的物料清单和价格
+
+**子能力清单表格**
+
+| 序号 | 能力名称 | 包路径 | 项目位置 | 职责描述 | 输入 | 输出 | 依赖 |
+|-----|---------|--------|---------|---------|------|------|------|
+| 1 | ParameterValidator（参数校验器） | com.sangfor.cpq.scene.validator | sf-support-service | 校验用户输入参数的合法性 | 用户输入参数Map | 校验结果Boolean | - |
+| 2 | SceneMatcher（场景匹配器） | com.sangfor.cpq.scene.matcher | sf-support-service | 根据行业和场景类型匹配规则 | 行业代码、场景类型 | 匹配的规则列表 | SceneRuleMapper |
+| 3 | EpsCalculator（EPS计算器） | com.sangfor.cpq.scene.calculator | sf-support-service | 计算每日事件处理速率 | 日志量、峰值因子 | EPS值 | - |
+| 4 | GraphicsCardCalculator（显卡计算器） | com.sangfor.cpq.scene.calculator | sf-support-service | 计算所需显卡数量和规格 | EPS、业务参数 | 显卡规格和数量 | - |
+| 5 | ServerCalculator（服务器计算器） | com.sangfor.cpq.scene.calculator | sf-support-service | 计算所需服务器数量和配置 | 显卡数量、配置要求 | 服务器规格和数量 | - |
+| 6 | MaterialGenerator（物料生成器） | com.sangfor.cpq.scene.generator | sf-support-service | 根据计算结果生成物料清单 | 各计算器输出 | 物料清单 | ProductService |
+| 7 | PriceCalculator（价格计算器） | com.sangfor.cpq.price.calculator | sf-support-service | 计算物料总价 | 物料清单 | 总金额 | PricingService（外部RPC） |
+
+### 4.2 编排流程图
+
+```
+开始
+ ↓
+┌─────────────────┐
+│ 1. 参数校验      │
+│ ParameterValidator │
+└────────┬────────┘
+         ↓ 校验通过
+┌─────────────────┐
+│ 2. 场景匹配      │
+│ SceneMatcher    │
+└────────┬────────┘
+         ↓ 规则列表
+┌─────────────────┐
+│ 3. EPS计算       │
+│ EpsCalculator   │
+└────────┬────────┘
+         ↓ EPS值
+         ├─────────────────┐
+         ↓                 ↓
+┌─────────────────┐ ┌─────────────────┐
+│ 4. 显卡计算      │ │ 并行执行         │
+│ GraphicsCardCalc│ │                 │
+└────────┬────────┘ └─────────────────┘
+         ↓
+┌─────────────────┐
+│ 5. 服务器计算    │
+│ ServerCalculator│
+└────────┬────────┘
+         ↓ 计算结果
+┌─────────────────┐
+│ 6. 物料生成      │
+│ MaterialGenerator│
+└────────┬────────┘
+         ↓ 物料清单
+┌─────────────────┐
+│ 7. 价格计算      │
+│ PriceCalculator │
+└────────┬────────┘
+         ↓ 总金额
+       返回结果
+```
+
+### 4.3 编排代码示例
+
+```java
+/**
+ * 场景选型主流程编排
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.scene.service.impl.SceneSelectionService
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ * 
+ * <p><b>编排说明</b>：
+ * 本方法负责协调各个子能力（参数校验、场景匹配、EPS计算、显卡计算、
+ * 服务器计算、物料生成、价格计算）完成场景选型的完整流程。
+ */
+public CalculationResult selectScene(SceneSelectionRequest request) {
+    log.info("开始场景选型计算，请求参数：{}", request);
+    
+    // 参数校验
+    if (request == null) {
+        log.error("请求参数不能为空");
+        throw new IllegalArgumentException("请求参数不能为空");
+    }
+    if (request.getIndustryCode() == null) {
+        log.error("行业代码不能为空");
+        throw new IllegalArgumentException("行业代码不能为空");
+    }
+    if (StringUtils.isBlank(request.getScenarioType())) {
+        log.error("场景类型不能为空");
+        throw new IllegalArgumentException("场景类型不能为空");
+    }
+    
+    try {
+        // 步骤1：场景匹配
+        log.debug("步骤1：场景匹配");
+        List<SceneRule> rules = sceneMatcher.matchRules(
+            request.getIndustryCode(), 
+            request.getScenarioType()
+        );
+        
+        // 检查规则是否匹配
+        if (CollectionUtils.isEmpty(rules)) {
+            log.warn("未找到匹配的场景规则，industryCode: {}, scenarioType: {}",
+                request.getIndustryCode(), request.getScenarioType());
+            throw new BusinessException("未找到匹配的场景规则");
+        }
+        
+        // ========== 步骤2：EPS计算 ==========
+        log.debug("步骤2：EPS计算");
+        BigDecimal eps = epsCalculator.calculate(
+            request.getUserInputParams(),
+            rules.get(0) // 使用优先级最高的规则
+        );
+        log.info("EPS计算完成，EPS值：{}", eps);
+        
+        // ========== 步骤3：显卡计算 ==========
+        log.debug("步骤3：显卡计算");
+        GraphicsCardResult cardResult = graphicsCardCalculator.calculate(
+            eps, 
+            rules, 
+            request.getUserInputParams()
+        );
+        log.info("显卡计算完成，显卡型号：{}，数量：{}", 
+            cardResult.getCardSpec(), cardResult.getCardCount());
+        
+        // ========== 步骤4：服务器计算 ==========
+        log.debug("步骤4：服务器计算");
+        ServerResult serverResult = serverCalculator.calculate(
+            cardResult.getCardCount(),
+            cardResult.getCardSpec(),
+            rules
+        );
+        log.info("服务器计算完成，服务器数量：{}", serverResult.getServerCount());
+        
+        // ========== 步骤5：物料生成 ==========
+        log.debug("步骤5：物料生成");
+        List<MaterialItem> materials = materialGenerator.generate(
+            cardResult,
+            serverResult,
+            rules
+        );
+        log.info("物料生成完成，物料数量：{}", materials.size());
+        
+        // ========== 步骤6：价格计算 ==========
+        log.debug("步骤6：价格计算");
+        BigDecimal totalAmount = priceCalculator.calculate(materials);
+        log.info("价格计算完成，总金额：{}", totalAmount);
+        
+        // ========== 步骤7：构建返回结果 ==========
+        CalculationResult result = CalculationResult.builder()
+            .success(true)
+            .materialItems(materials)
+            .totalAmount(totalAmount)
+            .build();
+        
+        log.info("场景选型计算完成");
+        return result;
+        
+    } catch (IllegalArgumentException e) {
+        log.error("参数校验失败：{}", e.getMessage());
+        throw e;
+    } catch (BusinessException e) {
+        log.error("业务处理失败：{}", e.getMessage());
+        throw e;
+    } catch (Exception e) {
+        log.error("系统异常", e);
+        throw new SystemException("场景选型计算失败", e);
+    }
+}
+```
+
+### 4.4 异常处理策略
+
+| 步骤 | 异常类型 | 处理方式 | 用户提示 |
+|-----|---------|---------|---------|
+| 参数校验 | IllegalArgumentException | 立即返回，不继续执行 | 提示具体哪个参数不合法 |
+| 场景匹配 | BusinessException | 立即返回 | "当前场景暂不支持" |
+| EPS计算 | ArithmeticException | 记录日志，使用默认值 | "计算异常，已使用推荐值" |
+| 显卡计算 | BusinessException | 记录日志，转人工处理 | "配置复杂，请联系销售" |
+| 物料生成 | NotFoundException | 记录日志，跳过该物料 | "部分物料缺货" |
+| 价格计算 | SystemException | 记录日志，返回默认价 | "价格计算异常，请咨询" |
+
+---
+
+## 5️⃣ 依赖关系澄清规范
+
+### 核心原则
+> **明确对已有功能、外部接口、中间件的依赖，并编排进业务流程**
+
+### 5.1 内部依赖清单
+
+#### Service层依赖
+
+| 依赖类型 | 依赖项 | 包路径 | 项目位置 | 说明 | 调用时机 | 调用方式 |
+|---------|-------|-------|---------|------|---------|---------|
+| Service | `ProductService` | com.sangfor.cpq.product.service | sf-support-service | 查询产品信息和价格 | 物料生成阶段 | `@Autowired` 注入 |
+| Service | `CustomerService` | com.sangfor.cpq.customer.service | sf-support-service | 查询客户行业信息 | 参数校验阶段 | `@Autowired` 注入 |
+| Service | `QuoteService` | com.sangfor.cpq.quote.service | sf-support-service | 创建报价单 | 结果保存阶段 | `@Autowired` 注入 |
+
+**调用示例**：
+```java
+/**
+ * 场景选型服务实现
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.scene.service.impl.SceneSelectionService
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+@Service
+@Slf4j
+public class SceneSelectionService {
+    
+    @Autowired
+    private ProductService productService;
+    
+    @Autowired
+    private CustomerService customerService;
+    
+    /**
+     * 查询客户行业信息
+     */
+    private Integer getCustomerIndustryCode(Long customerId) {
+        // 参数校验
+        if (customerId == null) {
+            log.error("客户ID不能为空");
+            throw new IllegalArgumentException("客户ID不能为空");
+        }
+        
+        // 查询客户信息
+        CustomerInfo customer = customerService.getCustomerById(customerId);
+        
+        // 结果校验
+        if (customer == null) {
+            log.error("客户不存在，customerId: {}", customerId);
+            throw new BusinessException("客户不存在");
+        }
+        
+        // 返回行业代码
+        return customer.getIndustryCode();
+    }
+    
+    /**
+     * 查询产品价格并填充物料清单
+     */
+    private void enrichProductPrices(List<MaterialItem> materials) {
+        // 参数校验
+        if (CollectionUtils.isEmpty(materials)) {
+            log.warn("物料清单为空，无需查询价格");
+            return;
+        }
+        
+        // 遍历物料查询价格
+        for (MaterialItem item : materials) {
+            // 检查产品编码
+            if (StringUtils.isBlank(item.getProductCode())) {
+                log.warn("物料的产品编码为空，跳过：{}", item);
+                continue;
+            }
+            
+            // 查询产品价格
+            ProductPrice price = productService.getProductPrice(
+                item.getProductCode()
+            );
+            
+            // 检查价格是否存在
+            if (price == null || price.getPrice() == null) {
+                log.warn("产品价格不存在，productCode: {}", item.getProductCode());
+                continue;
+            }
+            
+            // 填充价格信息
+            item.setUnitPrice(price.getPrice());
+            item.setTotalPrice(
+                price.getPrice().multiply(new BigDecimal(item.getQuantity()))
+            );
+        }
+    }
+}
+```
+
+#### Mapper层依赖
+
+| 依赖项 | 包路径 | 项目位置 | 说明 | SQL操作 |
+|-------|-------|---------|------|---------|
+| `SceneRuleMapper` | com.sangfor.cpq.scene.mapper | sf-support-service | 查询场景规则配置 | SELECT |
+| `MaterialMappingMapper` | com.sangfor.cpq.scene.mapper | sf-support-service | 查询物料映射关系 | SELECT |
+
+**调用示例**：
+```java
+/**
+ * 场景规则查询服务
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.scene.service.impl.SceneRuleQueryService
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+@Autowired
+private SceneRuleMapper sceneRuleMapper;
+
+/**
+ * 查询场景规则
+ */
+private List<SceneRule> querySceneRules(Integer industryCode, String scenarioType) {
+    // 参数校验
+    if (industryCode == null) {
+        log.error("行业代码不能为空");
+        throw new IllegalArgumentException("行业代码不能为空");
+    }
+    if (StringUtils.isBlank(scenarioType)) {
+        log.error("场景类型不能为空");
+        throw new IllegalArgumentException("场景类型不能为空");
+    }
+    
+    // 查询规则
+    List<SceneRule> rules = sceneRuleMapper.selectByIndustryAndScenario(
+        industryCode, 
+        scenarioType
+    );
+    
+    // 检查结果
+    if (CollectionUtils.isEmpty(rules)) {
+        log.warn("未查询到场景规则，industryCode: {}, scenarioType: {}", 
+            industryCode, scenarioType);
+        return Collections.emptyList();
+    }
+    
+    // 按优先级排序
+    rules.sort(Comparator.comparing(SceneRule::getPriority));
+    
+    return rules;
+}
+```
+
+#### 工具类依赖
+
+| 工具类 | 包路径 | 项目位置 | 说明 | 常用方法 |
+|-------|-------|---------|------|---------|
+| `BigDecimalUtils` | com.sangfor.common.util | common模块 | BigDecimal运算工具 | `add()`, `multiply()`, `divide()` |
+| `DateUtils` | com.sangfor.common.util | common模块 | 日期处理工具 | `format()`, `parse()` |
+| `JsonUtils` | com.sangfor.common.util | common模块 | JSON序列化工具 | `toJson()`, `fromJson()` |
+
+**调用示例**：
+```java
+/**
+ * 价格计算服务
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.price.service.impl.PriceCalculationService
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+
+/**
+ * 计算物料总价
+ */
+public BigDecimal calculateTotalPrice(List<MaterialItem> materials) {
+    // 参数校验
+    if (CollectionUtils.isEmpty(materials)) {
+        log.warn("物料清单为空");
+        return BigDecimal.ZERO;
+    }
+    
+    // 使用BigDecimalUtils进行安全运算
+    BigDecimal total = BigDecimal.ZERO;
+    for (MaterialItem item : materials) {
+        // 检查单价和数量
+        if (item.getUnitPrice() == null || item.getQuantity() == null) {
+            log.warn("物料价格或数量为空，跳过：{}", item);
+            continue;
+        }
+        
+        BigDecimal itemTotal = BigDecimalUtils.multiply(
+            item.getUnitPrice(), 
+            new BigDecimal(item.getQuantity())
+        );
+        total = BigDecimalUtils.add(total, itemTotal);
+    }
+    
+    return total;
+}
+
+/**
+ * 解析规则表达式
+ */
+private Map<String, Object> parseRuleExpression(SceneRule rule) {
+    // 参数校验
+    if (rule == null) {
+        log.error("规则对象不能为空");
+        throw new IllegalArgumentException("规则对象不能为空");
+    }
+    if (StringUtils.isBlank(rule.getRuleExpression())) {
+        log.error("规则表达式不能为空，ruleCode: {}", rule.getRuleCode());
+        throw new BusinessException("规则表达式不能为空");
+    }
+    
+    // 使用JsonUtils解析JSON
+    try {
+        Map<String, Object> ruleExpr = JsonUtils.fromJson(
+            rule.getRuleExpression(), 
+            new TypeReference<Map<String, Object>>() {}
+        );
+        
+        // 检查解析结果
+        if (ruleExpr == null || ruleExpr.isEmpty()) {
+            log.warn("规则表达式解析为空，ruleCode: {}", rule.getRuleCode());
+            return Collections.emptyMap();
+        }
+        
+        return ruleExpr;
+        
+    } catch (Exception e) {
+        log.error("规则表达式解析失败，ruleCode: {}, expression: {}", 
+            rule.getRuleCode(), rule.getRuleExpression(), e);
+        throw new BusinessException("规则表达式格式错误", e);
+    }
+}
+```
+
+### 5.2 外部接口依赖
+
+#### HTTP API依赖
+
+| 接口名称 | 提供方 | 接口地址 | 请求方式 | 项目位置 | 说明 | 调用时机 |
+|---------|-------|---------|---------|---------|------|---------|
+| 产品主数据查询 | MDM系统（外部） | `/api/mdm/product/query` | GET | 外部系统 | 查询产品主数据 | 物料生成阶段 |
+| 库存查询 | WMS系统（外部） | `/api/wms/inventory/check` | POST | 外部系统 | 检查库存可用性 | 物料验证阶段 |
+
+**调用示例**：
+```java
+/**
+ * 外部API配置类
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.config.ExternalApiConfig
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+@Configuration
+public class ExternalApiConfig {
+    
+    @Value("${external.mdm.base-url}")
+    private String mdmBaseUrl;
+    
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+
+/**
+ * MDM系统接口服务
+ * 
+ * <p><b>包路径</b>：com.sangfor.cpq.external.service.MdmService
+ * <p><b>项目位置</b>：sf-support-service（本项目）
+ */
+@Service
+@Slf4j
+public class MdmService {
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    @Value("${external.mdm.base-url}")
+    private String mdmBaseUrl;
+    
+    /**
+     * 查询产品主数据
+     */
+    public ProductMasterData queryProductMasterData(String productCode) {
+        // 参数校验
+        if (StringUtils.isBlank(productCode)) {
+            log.error("产品编码不能为空");
+            throw new IllegalArgumentException("产品编码不能为空");
+        }
+        
+        // 构建请求URL
+        String url = mdmBaseUrl + "/api/mdm/product/query?productCode=" + productCode;
+        
+        try {
+            // 调用外部接口
+            ProductResponse response = restTemplate.getForObject(url, ProductResponse.class);
+            
+            // 检查响应
+            if (response == null) {
+                log.error("MDM接口返回结果为空，productCode: {}", productCode);
+                throw new BusinessException("MDM系统无响应");
+            }
+            if (!response.isSuccess()) {
+                log.error("MDM接口调用失败，productCode: {}, errorMsg: {}", 
+                    productCode, response.getMessage());
+                throw new BusinessException("查询产品主数据失败：" + response.getMessage());
+            }
+            if (response.getData() == null) {
+                log.warn("产品主数据不存在，productCode: {}", productCode);
+                throw new NotFoundException("产品不存在");
+            }
+            
+            // 返回结果
+            return response.getData();
+            
+        } catch (RestClientException e) {
+            log.error("调用MDM接口异常，productCode: {}, url: {}", productCode, url, e);
+            throw new SystemException("MDM系统调用失败", e);
+        }
+    }
+}
+```
+
+#### RPC接口依赖
+
+| 接口名称 | 提供方 | 接口定义 | 项目位置 | 说明 | 调用时机 |
+|---------|-------|---------|---------|------|---------|
+| 价格计算服务 | 定价中心（外部） | `PricingService.calculatePrice()` | 外部RPC服务 | 计算折扣价格 | 价格计算阶段 |
+| 信用检查服务 | 风控系统（外部） | `CreditService.checkCredit()` | 外部RPC服务 | 检查客户信用 | 订单创建前 |
+
+**调用示例**：
+```java
+@Service
+@Slf4j
+public class PriceService {
+    
+    @DubboReference
+    private PricingService pricingService;
+    
+    /**
+     * 计算折扣价格
+     */
+    public BigDecimal calculateDiscountPrice(List<MaterialItem> materials, Long customerId) {
+        PriceRequest request = new PriceRequest();
+        request.setMaterials(materials);
+        request.setCustomerId(customerId);
+        
+        try {
+            PriceResponse response = pricingService.calculatePrice(request);
+            
+            if (!response.isSuccess()) {
+                throw new BusinessException("价格计算失败：" + response.getMessage());
+            }
+            
+            return response.getTotalAmount();
+            
+        } catch (RpcException e) {
+            log.error("调用定价中心RPC失败", e);
+            throw new SystemException("定价服务调用失败", e);
+        }
+    }
+}
+```
+
+### 5.3 中间件依赖
+
+#### Redis缓存
+
+| 用途 | Key格式 | 过期时间 | 说明 |
+|-----|--------|---------|------|
+| 缓存场景规则 | `scene:rule:{industryCode}:{scenarioType}` | 1小时 | 减少数据库查询 |
+| 缓存产品价格 | `product:price:{productCode}` | 10分钟 | 价格变动较快 |
+| 计算结果缓存 | `calculation:result:{requestHash}` | 5分钟 | 相同请求直接返回 |
+
+**使用示例**：
+```java
+@Service
+@Slf4j
+public class SceneRuleCacheService {
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    @Autowired
+    private SceneRuleMapper sceneRuleMapper;
+    
+    /**
+     * 带缓存的规则查询
+     */
+    public List<SceneRule> getRulesWithCache(Integer industryCode, String scenarioType) {
+        String cacheKey = String.format("scene:rule:%d:%s", industryCode, scenarioType);
+        
+        // 1. 尝试从缓存获取
+        List<SceneRule> rules = (List<SceneRule>) redisTemplate.opsForValue().get(cacheKey);
+        
+        if (CollectionUtils.isNotEmpty(rules)) {
+            log.debug("从缓存获取规则，命中缓存");
+            return rules;
+        }
+        
+        // 2. 缓存未命中，查询数据库
+        log.debug("缓存未命中，从数据库查询规则");
+        rules = sceneRuleMapper.selectByIndustryAndScenario(industryCode, scenarioType);
+        
+        // 3. 写入缓存
+        if (CollectionUtils.isNotEmpty(rules)) {
+            redisTemplate.opsForValue().set(cacheKey, rules, 1, TimeUnit.HOURS);
+            log.debug("规则已缓存");
+        }
+        
+        return rules;
+    }
+    
+    /**
+     * 清除规则缓存
+     */
+    public void evictRuleCache(Integer industryCode, String scenarioType) {
+        String cacheKey = String.format("scene:rule:%d:%s", industryCode, scenarioType);
+        redisTemplate.delete(cacheKey);
+        log.info("已清除规则缓存：{}", cacheKey);
+    }
+}
+```
+
+#### RabbitMQ消息队列
+
+| Exchange | Routing Key | 队列 | 用途 |
+|---------|-------------|------|------|
+| `scene.calculation.exchange` | `calculation.complete` | `scene.calculation.complete.queue` | 计算完成通知 |
+| `scene.calculation.exchange` | `calculation.error` | `scene.calculation.error.queue` | 计算异常通知 |
+
+**使用示例**：
+```java
+@Configuration
+public class RabbitMQConfig {
+    
+    @Bean
+    public DirectExchange sceneCalculationExchange() {
+        return new DirectExchange("scene.calculation.exchange", true, false);
+    }
+    
+    @Bean
+    public Queue calculationCompleteQueue() {
+        return new Queue("scene.calculation.complete.queue", true);
+    }
+    
+    @Bean
+    public Binding calculationCompleteBinding() {
+        return BindingBuilder
+            .bind(calculationCompleteQueue())
+            .to(sceneCalculationExchange())
+            .with("calculation.complete");
+    }
+}
+
+@Service
+@Slf4j
+public class CalculationMessageService {
+    
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    
+    /**
+     * 发送计算完成消息
+     */
+    public void sendCalculationCompleteMessage(String quoteId, CalculationResult result) {
+        CalculationCompleteMessage message = new CalculationCompleteMessage();
+        message.setQuoteId(quoteId);
+        message.setMaterialCount(result.getMaterialItems().size());
+        message.setTotalAmount(result.getTotalAmount());
+        message.setTimestamp(LocalDateTime.now());
+        
+        try {
+            rabbitTemplate.convertAndSend(
+                "scene.calculation.exchange", 
+                "calculation.complete", 
+                message
+            );
+            log.info("发送计算完成消息成功，quoteId: {}", quoteId);
+            
+        } catch (AmqpException e) {
+            log.error("发送MQ消息失败，quoteId: {}", quoteId, e);
+            // 不影响主流程，异步通知失败仅记录日志
+        }
+    }
+}
+```
+
+### 5.4 配置依赖
+
+#### 配置项清单
+
+| 配置项 | 类型 | 默认值 | 说明 | 配置文件 |
+|-------|-----|--------|------|---------|
+| `scene.calculation.eps.peak-factor` | Double | 2.0 | EPS计算峰值因子 | application.yml |
+| `scene.calculation.cache.enabled` | Boolean | true | 是否启用规则缓存 | application.yml |
+| `external.mdm.base-url` | String | - | MDM系统地址（必填） | application-{env}.yml |
+| `external.pricing.timeout` | Integer | 5000 | 定价服务超时时间（ms） | application.yml |
+
+#### 配置文件示例
+
+**application.yml**
+```yaml
+scene:
+  calculation:
+    eps:
+      peak-factor: 2.0  # EPS峰值因子
+    cache:
+      enabled: true  # 启用缓存
+      ttl: 3600  # 缓存过期时间（秒）
+
+external:
+  pricing:
+    timeout: 5000  # RPC超时时间
+    retry-times: 3  # 重试次数
+```
+
+**application-sit.yml**
+```yaml
+external:
+  mdm:
+    base-url: http://mdm-sit.example.com
+  wms:
+    base-url: http://wms-sit.example.com
+```
+
+#### 配置使用示例
+
+```java
+@Configuration
+@ConfigurationProperties(prefix = "scene.calculation")
+@Data
+public class SceneCalculationProperties {
+    
+    /**
+     * EPS配置
+     */
+    private EpsConfig eps = new EpsConfig();
+    
+    /**
+     * 缓存配置
+     */
+    private CacheConfig cache = new CacheConfig();
+    
+    @Data
+    public static class EpsConfig {
+        /**
+         * 峰值因子
+         */
+        private Double peakFactor = 2.0;
+    }
+    
+    @Data
+    public static class CacheConfig {
+        /**
+         * 是否启用缓存
+         */
+        private Boolean enabled = true;
+        
+        /**
+         * 缓存过期时间（秒）
+         */
+        private Integer ttl = 3600;
+    }
+}
+
+@Service
+@Slf4j
+public class EpsCalculator {
+    
+    @Autowired
+    private SceneCalculationProperties properties;
+    
+    public BigDecimal calculateEPS(int dailyLogVolume) {
+        // 使用配置的峰值因子
+        double peakFactor = properties.getEps().getPeakFactor();
+        
+        log.debug("使用峰值因子：{}", peakFactor);
+        
+        // 计算逻辑
+        // ...
+    }
+}
+```
+
+### 5.5 完整流程中的依赖编排
+
+```java
+@Service
+@Slf4j
+public class SceneSelectionFacade {
+    
+    // ========== 内部依赖 ==========
+    @Autowired
+    private CustomerService customerService;
+    
+    @Autowired
+    private SceneRuleCacheService sceneRuleCacheService;
+    
+    @Autowired
+    private EpsCalculator epsCalculator;
+    
+    @Autowired
+    private GraphicsCardCalculator graphicsCardCalculator;
+    
+    @Autowired
+    private ServerCalculator serverCalculator;
+    
+    @Autowired
+    private MaterialGenerator materialGenerator;
+    
+    // ========== 外部依赖 ==========
+    @Autowired
+    private MdmService mdmService;
+    
+    @DubboReference
+    private PricingService pricingService;
+    
+    // ========== 中间件依赖 ==========
+    @Autowired
+    private CalculationMessageService messageService;
+    
+    // ========== 配置依赖 ==========
+    @Autowired
+    private SceneCalculationProperties properties;
+    
+    /**
+     * 场景选型主流程（包含所有依赖的编排）
+     */
+    public CalculationResult selectScene(SceneSelectionRequest request) {
+        log.info("开始场景选型，请求参数：{}", request);
+        
+        // 1. 查询客户信息（内部依赖：CustomerService）
+        CustomerInfo customer = customerService.getCustomerById(request.getCustomerId());
+        Integer industryCode = customer.getIndustryCode();
+        
+        // 2. 查询场景规则（内部依赖：Mapper + Redis缓存）
+        List<SceneRule> rules = sceneRuleCacheService.getRulesWithCache(
+            industryCode, 
+            request.getScenarioType()
+        );
+        
+        // 3. 执行计算（内部能力编排）
+        BigDecimal eps = epsCalculator.calculate(request.getUserInputParams(), rules);
+        GraphicsCardResult cardResult = graphicsCardCalculator.calculate(eps, rules);
+        ServerResult serverResult = serverCalculator.calculate(cardResult, rules);
+        List<MaterialItem> materials = materialGenerator.generate(cardResult, serverResult, rules);
+        
+        // 4. 查询产品主数据（外部依赖：MDM系统）
+        for (MaterialItem item : materials) {
+            ProductMasterData masterData = mdmService.queryProductMasterData(item.getProductCode());
+            item.setProductName(masterData.getProductName());
+        }
+        
+        // 5. 计算折扣价格（外部依赖：定价中心RPC）
+        PriceRequest priceRequest = new PriceRequest();
+        priceRequest.setMaterials(materials);
+        priceRequest.setCustomerId(customer.getId());
+        PriceResponse priceResponse = pricingService.calculatePrice(priceRequest);
+        BigDecimal totalAmount = priceResponse.getTotalAmount();
+        
+        // 6. 构建返回结果
+        CalculationResult result = CalculationResult.builder()
+            .success(true)
+            .materialItems(materials)
+            .totalAmount(totalAmount)
+            .build();
+        
+        // 7. 发送完成通知（中间件依赖：RabbitMQ）
+        messageService.sendCalculationCompleteMessage(request.getQuoteId(), result);
+        
+        log.info("场景选型完成，物料数量：{}，总金额：{}", materials.size(), totalAmount);
+        return result;
+    }
+}
+```
+
+---
+
+## 6️⃣ 保留原有文档结构
+
+### 核心原则
+> **在原有拆分思路的基础上，补充上述5项内容，不破坏现有规范**
+
+### 6.1 主方案结构模板
+
+```markdown
+# AI安全场景选型-主方案
+
+## 📑 文档索引
+- [子方案1：EPS计算器](./EPS计算器-实现设计.md)
+- [子方案2：显卡计算器](./显卡计算器-实现设计.md)
+- [子方案3：服务器计算器](./服务器计算器-实现设计.md)
+
+## 🎯 1. 核心编排逻辑（原有内容保留）
+### 1.1 系统整体架构图
+### 1.2 核心流程图或时序图
+### 1.3 关键角色识别和职责说明
+### 1.4 主要数据流向
+
+## 🔌 2. 接口定义（新增）
+### 2.1 对外API接口
+### 2.2 Service接口
+### 2.3 内部接口
+
+## 🗄️ 3. 数据库表定义（新增）
+### 3.1 表结构说明
+### 3.2 索引设计
+### 3.3 表关系图
+
+## 🧩 4. 能力分解与编排（新增）
+### 4.1 子能力清单
+### 4.2 编排流程图
+### 4.3 编排代码示例
+
+## 🔗 5. 依赖关系澄清（新增）
+### 5.1 内部依赖
+### 5.2 外部接口依赖
+### 5.3 中间件依赖
+### 5.4 配置依赖
+
+## 📋 6. 代码生成步骤（原有内容保留）
+### 6.1 生成顺序和依赖关系
+### 6.2 进度跟踪表格
+```
+
+### 6.2 子方案结构模板
+
+```markdown
+# EPS计算器-子方案
+
+## 🔗 与主方案的关联（原有内容保留）
+本方案详细设计【EPS计算器】，对应主流程中的【步骤3：计算EPS】
+
+## 📥 输入依赖（原有内容保留）
+- 依赖主方案中的【用户输入参数】
+- 依赖【场景规则配置】
+
+## 📤 输出交付（原有内容保留）
+- 输出【EPS值】给显卡计算器和服务器计算器
+
+## 🎯 详细实现
+
+### 1. 类设计（原有内容）
+
+### 2. 类注释（增强：新增使用示例）
+/**
+ * EPS计算器
+ * 
+ * <p>使用示例：
+ * <pre>{@code
+ * EpsCalculator calculator = new EpsCalculator();
+ * BigDecimal eps = calculator.calculate(500, 2.0);
+ * }</pre>
+ */
+
+### 3. 方法定义（原有内容）
+
+### 4. 方法注释（增强：新增使用示例）
+/**
+ * 计算EPS
+ * 
+ * <p>使用示例：
+ * <pre>{@code
+ * // 示例1：基础用法
+ * BigDecimal eps = calculateEPS(500, 2.0);
+ * // 结果：约5800 EPS
+ * }</pre>
+ */
+
+### 5. 计算逻辑（原有内容）
+
+### 6. 异常处理（原有内容）
+
+### 7. 单元测试用例（原有内容）
+```
+
+---
+
+## ✅ 使用检查清单
+
+在编写实现设计文档时，请确保以下内容完整：
+
+### 主方案检查清单
+
+- [ ] **接口定义**：是否定义了所有对外接口的入参、出参、异常？
+- [ ] **数据库表**：是否定义了表结构、索引、DDL？
+- [ ] **能力分解**：是否列出了子能力清单和编排流程？
+- [ ] **包路径和项目位置**（⚠️新增必需）：能力清单表格是否包含了包路径和项目位置列？
+- [ ] **依赖澄清**：是否明确了内部依赖、外部接口、中间件、配置？
+- [ ] **依赖表格完整性**（⚠️新增必需）：依赖表格是否包含了包路径和项目位置列？
+- [ ] **核心编排**：是否包含流程图和编排代码示例？
+- [ ] **代码步骤**：是否定义了代码生成的顺序和依赖关系？
+
+### 子方案检查清单
+
+- [ ] **与主方案关联**：是否说明了在主流程中的位置？
+- [ ] **输入依赖**：是否明确了依赖的上游输出？
+- [ ] **输出交付**：是否说明了输出将被谁使用？
+- [ ] **类注释**：是否包含了可运行的使用示例？
+- [ ] **包路径和项目位置**（⚠️新增必需）：类注释是否包含了包路径和项目位置说明？
+- [ ] **方法注释**：是否包含了至少1个使用示例？
+- [ ] **详细实现**：是否包含了计算逻辑、异常处理？
+- [ ] **卫语句使用**（⚠️新增建议）：方法实现是否使用了卫语句减少嵌套？
+
+### 代码示例检查清单
+
+- [ ] **可运行性**：示例代码是否可以直接运行？
+- [ ] **完整性**：是否包含了必要的import、变量声明？
+- [ ] **真实性**：示例是否基于真实的业务场景？
+- [ ] **清晰性**：示例是否易于理解？
+- [ ] **包路径标注**（⚠️新增必需）：每个类的注释是否包含了包路径和项目位置？
+- [ ] **卫语句应用**（⚠️新增建议）：代码示例是否优先使用卫语句处理异常情况？
+- [ ] **代码扁平化**（⚠️新增建议）：代码是否避免了超过2层的if-else嵌套？
+
+---
+
+## 📌 重要提醒
+
+1. **接口定义必须包含入参表格、出参表格、异常说明**
+2. **类/方法注释必须包含至少1个可运行的使用示例**
+3. **数据库表必须提供完整的DDL和索引定义**
+4. **能力分解必须提供编排流程图和编排代码**
+5. **依赖关系必须在业务流程中编排展示**
+6. **保留原有的文档拆分结构，在此基础上补充内容**
+

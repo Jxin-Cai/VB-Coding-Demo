@@ -1,0 +1,845 @@
+---
+alwaysApply: false
+---
+# 单元测试规范与最佳实践
+
+> **使用场景**：当需要为代码编写单元测试时，参考此规范确保测试质量和覆盖率。
+
+---
+
+## 🎯 核心原则
+
+```yaml
+unit_test_principles:
+  black_box_testing: "站在黑盒测试立场，不关注函数内部实现"
+  business_driven: "基于业务诉求和需求文档设计测试用例"
+  boundary_testing: "重点测试各种边界条件和异常场景"
+  bug_discovery: "目标是发现问题，而非为了通过而写测试"
+  no_mock_abuse: "避免过度mock导致测试失去意义"
+  real_data: "优先使用真实的业务数据构造测试用例"
+```
+
+---
+
+## 📋 测试设计流程
+
+### Step 1: 需求分析
+
+#### 1.1 理解业务目标
+
+**分析维度**：
+- 这个函数解决什么业务问题？
+- 输入参数的业务含义是什么？
+- 返回值在业务中代表什么？
+- 有哪些前置条件和后置条件？
+
+**示例**：
+```
+函数：calculateEPS(dailyLogVolume, peakFactor)
+业务目标：计算AI安全系统每秒需要处理的事件数
+输入含义：
+  - dailyLogVolume: 每日日志量（GB）
+  - peakFactor: 峰值因子（业务高峰时的倍数）
+返回值：EPS值（事件/秒）
+前置条件：参数在有效范围内
+后置条件：EPS值向上取整到百位
+```
+
+#### 1.2 识别完整业务流程
+
+**核心原则**：测试期望应基于完整业务流程，而非中间步骤
+
+**业务流程分析步骤**：
+1. 识别业务流程的所有阶段
+2. 理解每个阶段的输入输出
+3. 确认是否有过滤、转换、聚合等中间处理
+4. 测试期望基于最终输出，而非中间状态
+
+**典型场景示例**：
+
+| 场景 | 完整流程 | 测试期望基础 |
+|-----|---------|-------------|
+| 物料规则评估 | 评估规则 → 生成物料项 → 分组 → 过滤 → 返回结果 | ✅ 基于过滤后的结果<br>❌ 不是生成的物料项数量 |
+| 价格计算 | 计算原价 → 应用折扣 → 应用优惠券 → 计算税费 → 返回最终价格 | ✅ 基于最终价格<br>❌ 不是中间折扣价 |
+| 显卡计算 | 计算总显卡数 → 按服务器分组 → 向上取整 → 返回配置 | ✅ 基于分组后的显卡数<br>❌ 不是总显卡数 |
+
+**验证清单**：
+- ❓ 函数的返回值是中间结果还是最终结果？
+- ❓ 是否有过滤、转换、聚合等中间处理阶段？
+- ❓ 测试期望是否基于完整业务流程？
+
+#### 1.3 理解表达式语义
+
+**核心原则**：理解表达式的业务含义，而非字面含义
+
+**典型误解案例**：
+
+| 表达式 | 字面含义 | 业务含义 | 测试期望 |
+|-------|---------|---------|---------|
+| `graphicsCardCount/8*8` | 先除以8再乘以8 | 完整服务器所需的显卡总数（8的整数倍） | 输入16张显卡 → 期望16张，不是2台 |
+| `price * quantity * (1 - discount)` | 价格乘数量再乘折扣系数 | 应用折扣后的总价 | 验证最终金额，不是中间过程 |
+| `logVolume * 1024 / 86400 * peakFactor` | 复杂计算 | 每秒事件数（含峰值） | 验证EPS值，单位是事件/秒 |
+
+**分析清单**：
+- ❓ 这个表达式计算的单位是什么？（张、台、元、%）
+- ❓ 表达式的返回值在业务中代表什么？
+- ❓ 是否需要进一步转换才能得到最终结果？
+
+---
+
+### Step 2: 测试用例设计
+
+#### 2.1 测试覆盖维度
+
+**必须覆盖的维度**：
+
+1. **正常场景**
+   - 符合预期的输入和输出
+   - 典型业务场景的测试
+   
+2. **边界条件**
+   - 最小值、最大值
+   - 临界值（如0、负数、空集合）
+   - 特殊值（如null、空字符串）
+
+3. **异常输入**
+   - 参数为null
+   - 参数类型错误
+   - 参数超出范围
+   - 参数组合非法
+
+4. **业务规则**
+   - 各种业务规则的组合
+   - 规则优先级验证
+   - 规则互斥性验证
+
+5. **数据依赖**
+   - 依赖数据存在的情况
+   - 依赖数据不存在的情况
+   - 依赖数据异常的情况
+
+6. **幂等性**
+   - 多次调用结果一致
+   - 无副作用验证
+
+#### 2.2 测试用例结构
+
+**标准测试用例格式**：
+
+```java
+@Test
+@DisplayName("测试用例名称 - 清晰描述测试场景")
+void should_ExpectedResult_when_Scenario() {
+    // Given: 准备测试数据和前置条件
+    // 说明：为什么构造这样的数据
+    
+    // When: 执行被测试的方法
+    
+    // Then: 验证结果
+    // 说明：期望什么结果，为什么
+}
+```
+
+**示例**：
+
+```java
+/**
+ * 测试：金融行业标准场景
+ * 
+ * 业务背景：金融行业每日产生500GB日志，使用标准峰值因子2.0
+ * 预期结果：EPS应该约为5787（向上取整到百位后为5800）
+ */
+@Test
+@DisplayName("金融行业标准场景 - 500GB日志, 峰值因子2.0")
+void should_return5800EPS_when_finance500GB() {
+    // Given: 金融行业标准配置
+    int dailyLogVolume = 500;  // 500GB/天
+    double peakFactor = 2.0;   // 金融行业标准峰值因子
+    
+    // When: 计算EPS
+    BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+    
+    // Then: 验证EPS值向上取整到百位
+    assertThat(eps).isEqualTo(new BigDecimal("5800"));
+    
+    // 附加说明：
+    // 原始计算：500 * 1024 * 1024 * 1024 / 86400 * 2.0 = 5787.03...
+    // 向上取整到百位：5800
+}
+```
+
+#### 2.3 测试数据构造原则
+
+**原则1：基于真实业务场景**
+```java
+// ✅ 好的做法：使用真实的业务数据
+Map<String, String> params = new HashMap<>();
+params.put("dailyLogVolume", "500");     // 金融行业典型值
+params.put("retentionDays", "180");      // 监管要求6个月
+params.put("securityLevel", "HIGH");     // 金融行业高安全等级
+
+// ❌ 不好的做法：随意构造数据
+Map<String, String> params = new HashMap<>();
+params.put("dailyLogVolume", "999");     // 没有业务含义
+params.put("retentionDays", "123");      // 随意数字
+```
+
+**原则2：边界值要有业务含义**
+```java
+// ✅ 好的做法：边界值有业务依据
+@Test
+void should_handleMinimumDailyLog_when_smallBranch() {
+    // 最小值：小型分支机构的最小日志量
+    int dailyLogVolume = 1;  // 1GB - 业务允许的最小值
+    // ...
+}
+
+@Test
+void should_handleMaximumDailyLog_when_largeDataCenter() {
+    // 最大值：大型数据中心的最大日志量
+    int dailyLogVolume = 10000;  // 10TB - 业务允许的最大值
+    // ...
+}
+```
+
+**原则3：异常场景要覆盖实际可能**
+```java
+// ✅ 好的做法：测试实际可能发生的异常
+@Test
+void should_throwException_when_logVolumeExceedsCapacity() {
+    // 超出系统处理能力的日志量
+    int dailyLogVolume = 50000;  // 超过硬件物理限制
+    
+    assertThatThrownBy(() -> calculator.calculateEPS(dailyLogVolume, 2.0))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("超出系统处理能力");
+}
+```
+
+---
+
+### Step 3: 测试实现
+
+#### 3.1 测试框架选择
+
+**推荐组合**：
+- **JUnit 5**：测试框架
+- **AssertJ**：断言库（流畅API）
+- **Mockito**：Mock框架（按需使用）
+
+**依赖配置**：
+```xml
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <version>5.9.2</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.assertj</groupId>
+    <artifactId>assertj-core</artifactId>
+    <version>3.24.2</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.mockito</groupId>
+    <artifactId>mockito-core</artifactId>
+    <version>5.2.0</version>
+    <scope>test</scope>
+</dependency>
+```
+
+#### 3.2 测试类结构
+
+```java
+package com.cpq.quote.domain.aisecurity.calculator;
+
+import org.junit.jupiter.api.*;
+import static org.assertj.core.api.Assertions.*;
+
+import java.math.BigDecimal;
+import java.util.*;
+
+/**
+ * EPS计算器单元测试
+ * 
+ * <p>测试范围：
+ * <ul>
+ *   <li>正常场景：不同行业、不同日志量的EPS计算</li>
+ *   <li>边界条件：最小值、最大值、临界值</li>
+ *   <li>异常场景：参数非法、超出范围</li>
+ *   <li>业务规则：不同行业的峰值因子</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@DisplayName("EPS计算器单元测试")
+class EpsCalculatorTest {
+    
+    private EpsCalculator calculator;
+    
+    /**
+     * 每个测试方法执行前初始化
+     */
+    @BeforeEach
+    void setUp() {
+        calculator = new EpsCalculator();
+    }
+    
+    /**
+     * 每个测试方法执行后清理
+     */
+    @AfterEach
+    void tearDown() {
+        calculator = null;
+    }
+    
+    // ========== 正常场景测试 ==========
+    
+    @Nested
+    @DisplayName("正常场景测试")
+    class NormalScenarios {
+        
+        @Test
+        @DisplayName("金融行业标准场景 - 500GB日志")
+        void should_return5800EPS_when_finance500GB() {
+            // Given
+            int dailyLogVolume = 500;
+            double peakFactor = 2.0;
+            
+            // When
+            BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+            
+            // Then
+            assertThat(eps).isEqualTo(new BigDecimal("5800"));
+        }
+        
+        @Test
+        @DisplayName("政府行业场景 - 1000GB日志")
+        void should_return10400EPS_when_government1000GB() {
+            // Given
+            int dailyLogVolume = 1000;
+            double peakFactor = 1.8;
+            
+            // When
+            BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+            
+            // Then
+            assertThat(eps).isEqualTo(new BigDecimal("10400"));
+        }
+    }
+    
+    // ========== 边界条件测试 ==========
+    
+    @Nested
+    @DisplayName("边界条件测试")
+    class BoundaryConditions {
+        
+        @Test
+        @DisplayName("最小日志量 - 1GB")
+        void should_calculateCorrectly_when_minimumLogVolume() {
+            // Given
+            int dailyLogVolume = 1;
+            double peakFactor = 2.0;
+            
+            // When
+            BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+            
+            // Then
+            assertThat(eps).isGreaterThan(BigDecimal.ZERO);
+        }
+        
+        @Test
+        @DisplayName("最大日志量 - 10000GB")
+        void should_calculateCorrectly_when_maximumLogVolume() {
+            // Given
+            int dailyLogVolume = 10000;
+            double peakFactor = 2.0;
+            
+            // When
+            BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+            
+            // Then
+            assertThat(eps).isEqualTo(new BigDecimal("116000"));
+        }
+    }
+    
+    // ========== 异常场景测试 ==========
+    
+    @Nested
+    @DisplayName("异常场景测试")
+    class ExceptionScenarios {
+        
+        @Test
+        @DisplayName("日志量为负数 - 应抛出异常")
+        void should_throwException_when_negativeLogVolume() {
+            // Given
+            int dailyLogVolume = -100;
+            double peakFactor = 2.0;
+            
+            // When & Then
+            assertThatThrownBy(() -> calculator.calculateEPS(dailyLogVolume, peakFactor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("日志量必须大于0");
+        }
+        
+        @Test
+        @DisplayName("峰值因子超出范围 - 应抛出异常")
+        void should_throwException_when_invalidPeakFactor() {
+            // Given
+            int dailyLogVolume = 500;
+            double peakFactor = 10.0;  // 超出1.0-5.0范围
+            
+            // When & Then
+            assertThatThrownBy(() -> calculator.calculateEPS(dailyLogVolume, peakFactor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("峰值因子必须在1.0-5.0之间");
+        }
+    }
+    
+    // ========== 业务规则测试 ==========
+    
+    @Nested
+    @DisplayName("业务规则测试")
+    class BusinessRules {
+        
+        @Test
+        @DisplayName("向上取整规则 - 5787应取整为5800")
+        void should_roundUpToHundred_when_calculated() {
+            // Given
+            int dailyLogVolume = 500;
+            double peakFactor = 2.0;
+            // 原始计算结果约为5787.03
+            
+            // When
+            BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+            
+            // Then
+            assertThat(eps).isEqualTo(new BigDecimal("5800"));
+            assertThat(eps.remainder(new BigDecimal("100")))
+                .isEqualTo(BigDecimal.ZERO);  // 验证是100的整数倍
+        }
+    }
+}
+```
+
+#### 3.3 断言最佳实践
+
+**使用AssertJ的流畅API**：
+
+```java
+// ✅ 好的做法：使用AssertJ
+assertThat(eps)
+    .isNotNull()
+    .isGreaterThan(BigDecimal.ZERO)
+    .isEqualTo(new BigDecimal("5800"));
+
+// ❌ 不好的做法：使用JUnit原生断言
+assertNotNull(eps);
+assertTrue(eps.compareTo(BigDecimal.ZERO) > 0);
+assertEquals(new BigDecimal("5800"), eps);
+```
+
+**复杂对象断言**：
+
+```java
+// 断言集合
+assertThat(materialItems)
+    .isNotNull()
+    .hasSize(5)
+    .extracting(MaterialItem::getProductCode)
+    .contains("GPU-A100-80G", "SERVER-X86-001");
+
+// 断言对象字段
+assertThat(result)
+    .hasFieldOrPropertyWithValue("success", true)
+    .hasFieldOrProperty("totalAmount")
+    .extracting(CalculationResult::getMaterialItems)
+    .asList()
+    .isNotEmpty();
+
+// 断言异常
+assertThatThrownBy(() -> calculator.calculateEPS(-1, 2.0))
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessageContaining("日志量")
+    .hasNoCause();
+```
+
+---
+
+### Step 4: 测试执行
+
+#### 4.1 运行测试
+
+**通过IDE运行**：
+- IntelliJ IDEA: 右键测试类 → Run 'EpsCalculatorTest'
+- Eclipse: 右键测试类 → Run As → JUnit Test
+
+**通过Maven运行**：
+```bash
+# 运行所有测试
+mvn test
+
+# 运行指定测试类
+mvn test -Dtest=EpsCalculatorTest
+
+# 运行指定测试方法
+mvn test -Dtest=EpsCalculatorTest#should_return5800EPS_when_finance500GB
+```
+
+**通过Gradle运行**：
+```bash
+# 运行所有测试
+./gradlew test
+
+# 运行指定测试类
+./gradlew test --tests EpsCalculatorTest
+
+# 运行指定测试方法
+./gradlew test --tests EpsCalculatorTest.should_return5800EPS_when_finance500GB
+```
+
+#### 4.2 查看测试报告
+
+**Maven测试报告位置**：
+```
+target/surefire-reports/
+├── TEST-com.cpq.quote.domain.aisecurity.calculator.EpsCalculatorTest.xml
+└── com.cpq.quote.domain.aisecurity.calculator.EpsCalculatorTest.txt
+```
+
+**Gradle测试报告位置**：
+```
+build/reports/tests/test/index.html
+```
+
+---
+
+### Step 5: 失败分析与处理
+
+#### 5.1 分析方法论
+
+**步骤1：理解失败现象**
+- 实际结果是什么？
+- 期望结果是什么？
+- 差异在哪里？
+
+**步骤2：定位根本原因**
+
+可能原因分类：
+
+| 原因类型 | 典型表现 | 分析方法 |
+|---------|---------|---------|
+| 测试期望值错误 | 期望值设置不正确 | 对比业务需求文档 |
+| 测试场景设计错误 | 未考虑完整业务流程 | 理解业务流程的所有阶段 |
+| 测试数据构造错误 | 测试数据不符合业务约束 | 检查数据是否真实 |
+| 业务逻辑bug | 代码逻辑错误 | 阅读代码实现 |
+| 边界条件未处理 | 特殊值处理缺失 | 检查边界情况 |
+| 表达式含义理解错误 | 误解计算公式 | 理解表达式的业务含义 |
+
+**步骤3：判断错误类型**
+
+**类型A - 测试错误（AI可直接修正）**：
+- 测试期望值设置错误（如误解表达式含义）
+- 测试场景设计不完整（如未考虑过滤逻辑）
+- 测试数据构造错误
+
+**处理流程**：
+1. 向用户说明错误原因
+2. 展示修正方案
+3. 立即修正测试代码
+
+**类型B - 代码错误（必须与用户沟通）**：
+- 业务逻辑bug（如缺少边界检查）
+- 计算逻辑错误
+- 过滤条件错误
+
+**处理流程**：
+1. ⏸️ 立即停止，不要自行修改代码
+2. 向用户报告失败的测试用例
+3. 提供失败原因分析（实际结果 vs 预期结果）
+4. 提供修改建议（选项A、选项B等）
+5. ⏸️ 等待用户明确指示后再进行修改
+
+#### 5.2 典型失败案例
+
+**案例1：表达式含义误解**
+
+```java
+// 测试失败
+@Test
+void should_return2Servers_when_16GraphicsCards() {
+    // Given: 16张显卡，每台服务器8张
+    int graphicsCardCount = 16;
+    
+    // When
+    int result = calculator.calculateServers(graphicsCardCount);
+    
+    // Then
+    assertThat(result).isEqualTo(2);  // ❌ 失败：期望2台，实际16张
+}
+
+// 失败原因分析
+// 表达式：graphicsCardCount/8*8
+// 误解：除以8再乘以8，以为返回服务器台数
+// 实际：向上取整到8的倍数，返回显卡总数
+// 正确理解：这个函数返回完整服务器所需的显卡总数，不是服务器台数
+
+// 修正后
+@Test
+void should_return16GraphicsCards_when_16InputCards() {
+    // Given: 16张显卡（正好2台服务器，无需补齐）
+    int graphicsCardCount = 16;
+    
+    // When
+    int result = calculator.calculateGraphicsCards(graphicsCardCount);
+    
+    // Then: 返回16张显卡，不是2台服务器
+    assertThat(result).isEqualTo(16);
+}
+```
+
+**案例2：未考虑完整业务流程**
+
+```java
+// 测试失败
+@Test
+void should_return6MaterialItems_when_3Rules() {
+    // Given: 3条规则，每条生成2个物料项
+    List<Rule> rules = Arrays.asList(rule1, rule2, rule3);
+    
+    // When
+    List<MaterialItem> result = generator.generateMaterials(rules);
+    
+    // Then
+    assertThat(result).hasSize(6);  // ❌ 失败：期望6个，实际2个
+}
+
+// 失败原因分析
+// 误解：以为3条规则 × 2个物料项 = 6个
+// 实际：生成6个物料项后，过滤掉了非质保类的4个，只返回2个
+// 正确理解：函数返回的是过滤后的质保类物料，不是所有生成的物料
+
+// 修正后
+@Test
+void should_return2WarrantyMaterials_when_3RulesGenerate6Items() {
+    // Given: 3条规则生成6个物料项（4个非质保，2个质保）
+    List<Rule> rules = Arrays.asList(rule1, rule2, rule3);
+    
+    // When: 生成物料并过滤
+    List<MaterialItem> result = generator.generateMaterials(rules);
+    
+    // Then: 返回2个质保类物料（完整业务流程的最终结果）
+    assertThat(result)
+        .hasSize(2)
+        .allMatch(item -> item.getType() == MaterialType.WARRANTY);
+}
+```
+
+#### 5.3 必须遵守的规则
+
+**⚠️ 强制规则**：
+
+1. **不得为了通过测试而修改测试用例**（除非确认是测试错误）
+2. **不得假设是测试写错了而自行修改**
+3. **不得隐藏或忽略失败的测试**
+4. **不得在未与用户沟通的情况下修改业务代码**
+
+**⏸️ 发现失败时的流程**：
+
+1. 立即停止，不要自行修改代码或测试
+2. 向用户报告失败的测试用例
+3. 提供失败原因分析（实际结果 vs 预期结果）
+4. 询问用户：是业务逻辑错误（需改代码）还是测试用例设计错误（需改测试）
+5. 等待用户明确指示后再进行修改
+
+---
+
+## 🎨 高级技巧
+
+### 1. 参数化测试
+
+**适用场景**：多组输入测试同一逻辑
+
+```java
+@ParameterizedTest
+@DisplayName("不同行业的EPS计算")
+@CsvSource({
+    "500,  2.0, 5800,  金融行业",
+    "1000, 1.8, 10400, 政府行业",
+    "300,  1.5, 2600,  制造行业"
+})
+void should_calculateCorrectEPS_for_differentIndustries(
+    int dailyLogVolume, 
+    double peakFactor, 
+    int expectedEPS, 
+    String industry
+) {
+    // When
+    BigDecimal eps = calculator.calculateEPS(dailyLogVolume, peakFactor);
+    
+    // Then
+    assertThat(eps)
+        .as("EPS计算 - %s", industry)
+        .isEqualTo(new BigDecimal(expectedEPS));
+}
+```
+
+### 2. 测试数据构建器
+
+**适用场景**：复杂对象构造
+
+```java
+/**
+ * 测试数据构建器
+ */
+class TestDataBuilder {
+    
+    public static SceneSelectionRequest.Builder aFinanceRequest() {
+        Map<String, String> params = new HashMap<>();
+        params.put("dailyLogVolume", "500");
+        params.put("retentionDays", "180");
+        
+        return SceneSelectionRequest.builder()
+            .industryCode(1)  // 金融
+            .scenarioType("AI_SECURITY_PLATFORM")
+            .userInputParams(params);
+    }
+    
+    public static SceneSelectionRequest.Builder aGovernmentRequest() {
+        Map<String, String> params = new HashMap<>();
+        params.put("dailyLogVolume", "1000");
+        params.put("retentionDays", "365");
+        
+        return SceneSelectionRequest.builder()
+            .industryCode(2)  // 政府
+            .scenarioType("AI_SECURITY_PLATFORM")
+            .userInputParams(params);
+    }
+}
+
+// 使用
+@Test
+void should_calculateCorrectly_for_financeIndustry() {
+    // Given
+    SceneSelectionRequest request = TestDataBuilder.aFinanceRequest()
+        .subScenario("NETWORK_DATA_FUSION")
+        .build();
+    
+    // When & Then
+    // ...
+}
+```
+
+### 3. Mock使用原则
+
+**何时使用Mock**：
+- ✅ 依赖外部系统（HTTP API、RPC）
+- ✅ 依赖中间件（数据库、Redis、MQ）
+- ✅ 依赖随机性或时间
+
+**何时不用Mock**：
+- ❌ 简单的工具类
+- ❌ 纯计算逻辑
+- ❌ 领域对象
+
+**Mock示例**：
+
+```java
+@ExtendWith(MockitoExtension.class)
+class SceneSelectionServiceTest {
+    
+    @Mock
+    private SceneRuleMapper sceneRuleMapper;
+    
+    @Mock
+    private ProductService productService;
+    
+    @InjectMocks
+    private SceneSelectionService service;
+    
+    @Test
+    void should_useDefaultRule_when_noCustomRule() {
+        // Given: Mock查询规则返回空
+        when(sceneRuleMapper.selectByIndustry(anyInt()))
+            .thenReturn(Collections.emptyList());
+        
+        // When
+        List<Rule> rules = service.getRules(1);
+        
+        // Then: 应使用默认规则
+        assertThat(rules).isNotEmpty();
+        assertThat(rules.get(0).getRuleCode()).isEqualTo("DEFAULT");
+    }
+}
+```
+
+### 4. 测试覆盖率
+
+**查看覆盖率**：
+
+```bash
+# Maven + JaCoCo
+mvn clean test jacoco:report
+
+# 报告位置
+target/site/jacoco/index.html
+```
+
+**覆盖率目标**：
+- 核心业务逻辑：≥ 90%
+- 工具类：≥ 80%
+- 配置类：≥ 60%
+
+---
+
+## ✅ 测试质量检查清单
+
+### 测试设计质量
+
+- [ ] 是否基于业务需求文档设计测试用例？
+- [ ] 是否理解了完整的业务流程（包括过滤、转换等中间阶段）？
+- [ ] 是否理解了表达式的业务含义（而非字面含义）？
+- [ ] 测试期望是否基于最终结果（而非中间状态）？
+- [ ] 是否覆盖了正常场景、边界条件、异常场景？
+- [ ] 是否覆盖了所有关键业务规则？
+
+### 测试代码质量
+
+- [ ] 测试方法命名是否清晰（should_XXX_when_YYY）？
+- [ ] 每个测试方法是否只测试一个场景？
+- [ ] 是否使用了Given-When-Then结构？
+- [ ] 是否添加了必要的注释说明测试意图？
+- [ ] 是否使用了AssertJ等流畅断言API？
+- [ ] Mock使用是否合理（不过度mock）？
+
+### 测试数据质量
+
+- [ ] 测试数据是否基于真实业务场景？
+- [ ] 边界值是否有业务含义？
+- [ ] 异常场景是否是实际可能发生的？
+- [ ] 测试数据是否易于理解和维护？
+
+### 失败处理质量
+
+- [ ] 是否分析了失败的根本原因？
+- [ ] 是否区分了测试错误和代码错误？
+- [ ] 如果是代码错误，是否与用户沟通？
+- [ ] 是否避免了为通过测试而修改测试？
+
+---
+
+## 📚 参考资源
+
+- JUnit 5 文档：https://junit.org/junit5/docs/current/user-guide/
+- AssertJ 文档：https://assertj.github.io/doc/
+- Mockito 文档：https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html
+- 主提示词：`.cursor/rules/java_coding_assistant_v2.mdc`
+- 实现设计模板：`.cursor/rules/implementation_design_template.mdc`
+
+---
+
+**文档版本**：v1.0
+**最后更新**：2025-10-29
+**维护者**：xinjin

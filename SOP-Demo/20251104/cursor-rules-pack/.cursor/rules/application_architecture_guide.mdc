@@ -1,0 +1,1127 @@
+---
+alwaysApply: false
+version: "1.0"
+---
+# 应用架构梳理引导提示词 v1.0
+
+## 🎯 提示词目标
+
+引导用户通过结构化问答的方式，清晰完整地描述应用架构，最终生成一份类似 `PROJECT_ARCHITECTURE.mdc` 的架构文档。
+
+## 🤝 工作模式
+
+### 核心原则
+- **渐进式提问**：从整体到局部，从架构到细节
+- **结构化引导**：提供选项和示例，降低回答难度
+- **及时澄清**：发现模糊或矛盾时立即询问
+- **可视化确认**：用图表总结用户回答，确认理解正确
+
+### 执行流程
+
+```mermaid
+flowchart TD
+    Start([开始架构梳理]) --> Phase1[阶段1: 应用全景识别]
+    Phase1 --> Confirm1{用户确认?}
+    Confirm1 -->|是| Phase2[阶段2: 项目清单梳理]
+    Confirm1 -->|修正| Phase1
+    
+    Phase2 --> Confirm2{用户确认?}
+    Confirm2 -->|是| Phase3[阶段3: 项目类型定义]
+    Confirm2 -->|修正| Phase2
+    
+    Phase3 --> Confirm3{用户确认?}
+    Confirm3 -->|是| Phase4[阶段4: 依赖关系梳理]
+    Confirm3 -->|修正| Phase3
+    
+    Phase4 --> Confirm4{用户确认?}
+    Confirm4 -->|是| Phase5[阶段5: 职责边界划分]
+    Confirm4 -->|修正| Phase4
+    
+    Phase5 --> Confirm5{用户确认?}
+    Confirm5 -->|是| Phase6[阶段6: 内部架构设计]
+    Confirm5 -->|修正| Phase5
+    
+    Phase6 --> Confirm6{用户确认?}
+    Confirm6 -->|是| Generate[生成架构文档]
+    Confirm6 -->|修正| Phase6
+    
+    Generate --> End([完成])
+    
+    classDef phaseNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000000
+    classDef confirmNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000000
+    classDef successNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000000
+    
+    class Phase1,Phase2,Phase3,Phase4,Phase5,Phase6,Generate phaseNode
+    class Confirm1,Confirm2,Confirm3,Confirm4,Confirm5,Confirm6 confirmNode
+    class End successNode
+```
+
+## 📋 阶段1：应用全景识别
+
+### 引导问题
+
+> 让我帮助您梳理应用架构。我们先从整体开始：
+> 
+> **问题1.1：应用划分**
+> 请问您的系统包含几个独立的应用（Application）？每个应用的名称和定位是什么？
+> 
+> 💡 **提示**：
+> - 应用是指一组相关项目的集合，通常对应一个业务领域或产品线
+> - 例如：用户中心应用、订单管理应用、支付应用等
+> 
+> **示例回答**：
+> ```
+> 我们有3个应用：
+> 1. 用户中心应用 - 负责用户管理、认证授权
+> 2. 订单管理应用 - 负责订单全流程管理
+> 3. 支付应用 - 负责支付、结算
+> ```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 应用全景图
+    
+    **识别到的应用**：
+    {application_list_with_description}
+    
+    **应用关系**：
+    ```mermaid
+    graph TB
+        {自动生成应用间关系图}
+    ```
+    
+    **❓ 确认问题**：
+    1. 应用数量和名称是否正确？
+    2. 应用的定位描述是否准确？
+    3. 是否有遗漏的应用？
+    
+    **请回复**："确认无误" 或 提出修正意见
+```
+
+## 📋 阶段2：项目清单梳理
+
+### 引导问题
+
+> 接下来，让我们梳理每个应用下的项目（Project/Module）。
+> 
+> **问题2.1：项目清单**
+> 对于【{应用名称}】应用，请列出包含哪些项目？
+> 
+> 💡 **提示**：
+> - 项目通常是一个可独立部署的代码仓库或Maven/Gradle模块
+> - 包括：服务、BFF、API包、公共组件等
+> 
+> **示例回答**：
+> ```
+> 用户中心应用包含：
+> 1. user-service-api - API定义包
+> 2. user-service - 业务服务
+> 3. user-admin - 后台管理BFF
+> 4. user-portal - 门户网站BFF
+> 5. user-common - 公共组件
+> ```
+
+### 信息收集维度
+
+```yaml
+project_information_collection:
+  for_each_project:
+    basic_info:
+      - project_name: "项目名称（Maven/Gradle 模块名）"
+      - project_path: "代码路径（如：services/user-service）"
+      - deployment_type: "部署类型（独立部署/作为依赖）"
+    
+    runtime_info:
+      - has_main_class: "是否有启动类（是/否）"
+      - port: "服务端口（如有）"
+      - protocol: "通信协议（HTTP/RPC/不提供服务）"
+```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 【{应用名称}】项目清单
+    
+    | 项目名称 | 代码路径 | 部署类型 | 是否独立部署 | 端口 | 协议 |
+    |---------|---------|---------|-------------|------|------|
+    {动态生成表格}
+    
+    **❓ 确认问题**：
+    1. 项目清单是否完整？
+    2. 是否有遗漏的公共组件或工具包？
+    
+    **请回复**："确认无误" 或 补充遗漏项目
+```
+
+## 📋 阶段3：项目类型定义
+
+### 引导问题
+
+> 现在让我们明确每个项目的类型和定位。
+> 
+> **问题3.1：项目类型识别**
+> 请为每个项目选择对应的类型：
+> 
+> 💡 **常见项目类型**：
+> 
+> ### A. 业务服务类
+> 1. **业务服务（Business Service）**
+>    - 定位：提供核心业务能力的RPC服务
+>    - 职责：实现业务逻辑、数据持久化、事务控制
+>    - 依赖：数据库、Redis、MQ等中间件
+>    - 示例：user-service、order-service
+> 
+> 2. **API包（API Package）**
+>    - 定位：RPC接口定义，二方SDK
+>    - 职责：定义RPC接口、DTO、常量
+>    - 依赖：无业务依赖，仅基础类库
+>    - 示例：user-service-api、order-service-api
+> 
+> ### B. 前端服务类
+> 3. **BFF - 后台管理（BFF-Admin）**
+>    - 定位：面向后台管理系统的编排层
+>    - 职责：聚合RPC服务、数据转换、接口鉴权
+>    - 依赖：业务服务的API包
+>    - 示例：user-admin、order-admin
+> 
+> 4. **BFF - 门户网站（BFF-Portal）**
+>    - 定位：面向C端门户的编排层
+>    - 职责：聚合RPC服务、数据转换、接口鉴权
+>    - 依赖：业务服务的API包
+>    - 示例：user-portal、order-portal
+> 
+> 5. **BFF - 移动端（BFF-Mobile）**
+>    - 定位：面向移动端的编排层
+>    - 职责：聚合RPC服务、数据转换、接口鉴权
+>    - 依赖：业务服务的API包
+>    - 示例：user-mobile、order-mobile
+> 
+> ### C. 网关与基础设施类
+> 6. **API网关（API Gateway）**
+>    - 定位：统一流量入口
+>    - 职责：路由、鉴权、限流、熔断
+>    - 依赖：注册中心、配置中心
+>    - 示例：api-gateway
+> 
+> 7. **配置中心（Config Server）**
+>    - 定位：统一配置管理
+>    - 职责：配置存储、配置推送、配置版本管理
+>    - 依赖：数据库或Git仓库
+>    - 示例：config-server
+> 
+> 8. **注册中心（Registry）**
+>    - 定位：服务注册与发现
+>    - 职责：服务注册、服务发现、健康检查
+>    - 依赖：无
+>    - 示例：eureka-server、nacos-server
+> 
+> ### D. 公共组件类
+> 9. **公共组件（Common Library）**
+>    - 定位：通用工具库
+>    - 职责：提供通用工具类、常量、枚举
+>    - 依赖：仅基础类库
+>    - 示例：common-utils、common-entity
+> 
+> 10. **业务组件（Business Component）**
+>     - 定位：可复用的业务组件
+>     - 职责：提供通用业务能力（如短信、邮件）
+>     - 依赖：第三方SDK
+>     - 示例：sms-component、email-component
+> 
+> ### E. 其他类型
+> 11. **定时任务（Scheduler）**
+>     - 定位：定时任务调度
+>     - 职责：执行定时任务、任务调度
+>     - 依赖：业务服务、MQ
+>     - 示例：order-scheduler
+> 
+> 12. **消息消费者（MQ Consumer）**
+>     - 定位：消息队列消费端
+>     - 职责：消费消息、异步处理
+>     - 依赖：MQ、业务服务
+>     - 示例：order-consumer
+> 
+> **示例回答**：
+> ```
+> 用户中心应用的项目类型：
+> 1. user-service-api - API包（类型2）
+> 2. user-service - 业务服务（类型1）
+> 3. user-admin - BFF-后台管理（类型3）
+> 4. user-portal - BFF-门户网站（类型4）
+> 5. user-common - 公共组件（类型9）
+> ```
+
+### 内部架构识别
+
+```yaml
+internal_architecture_detection:
+  trigger: "当项目类型为'业务服务'时"
+  
+  question: |
+    **问题3.2：业务服务的内部架构**
+    对于【{业务服务名称}】，请选择其内部架构模式：
+    
+    **A. DDD四层架构（推荐）**
+    ```
+    Controller (OHS) → App → Domain → Infr
+    ```
+    - ✅ 领域驱动设计
+    - ✅ 充血模型
+    - ✅ 依赖倒置
+    
+    **B. 传统三层架构**
+    ```
+    Controller → Service → Mapper/DAO
+    ```
+    - ✅ 简单直接
+    - ⚠️ 贫血模型
+    
+    **C. 其他架构**
+    请描述具体的分层方式
+    
+    **您的选择**：[A/B/C]
+```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 项目类型定义
+    
+    | 项目名称 | 项目类型 | 内部架构 | 核心职责 |
+    |---------|---------|---------|---------|
+    {动态生成表格}
+    
+    **架构分布统计**：
+    - 业务服务：{count}个
+    - BFF服务：{count}个
+    - 基础设施：{count}个
+    - 公共组件：{count}个
+    
+    **❓ 确认问题**：
+    1. 项目类型识别是否准确？
+    2. 内部架构选择是否正确？
+    
+    **请回复**："确认无误" 或 提出修正意见
+```
+
+## 📋 阶段4：依赖关系梳理
+
+### 引导问题
+
+> 现在让我们梳理项目之间的依赖关系。
+> 
+> **问题4.1：依赖关系识别**
+> 
+> 💡 **常见依赖关系**：
+> 
+> ### A. RPC调用依赖
+> - BFF → 业务服务的API包 → 业务服务
+> - 业务服务 → 其他业务服务的API包
+> 
+> ### B. Maven/Gradle依赖
+> - 所有项目 → 公共组件
+> - 业务服务 → API包（自身）
+> 
+> ### C. 运行时依赖
+> - 业务服务 → 数据库
+> - 业务服务 → Redis
+> - 业务服务 → MQ
+> - 所有服务 → 注册中心
+> - 所有服务 → 配置中心
+> 
+> **问题4.2：请描述各项目的依赖**
+> 
+> **示例回答**：
+> ```
+> user-admin（BFF-后台管理）依赖：
+> - RPC调用：user-service-api
+> - Maven依赖：user-common
+> - 运行时：注册中心（Nacos）
+> 
+> user-service（业务服务）依赖：
+> - Maven依赖：user-service-api（自身）、user-common
+> - 运行时：MySQL、Redis、RabbitMQ、Nacos
+> ```
+
+### 依赖检查规则
+
+```yaml
+dependency_validation_rules:
+  # 规则1：BFF不应直接依赖业务服务
+  rule_1_bff_no_direct_service_dependency:
+    description: "BFF层不应该直接依赖业务服务的实现"
+    check: "BFF的Maven依赖中不应包含 *-service 项目"
+    correct_pattern: "BFF → API包"
+    violation_warning: "⚠️ 检测到【{bff_name}】直接依赖【{service_name}】，建议改为依赖【{api_name}】"
+  
+  # 规则2：API包不应依赖业务服务
+  rule_2_api_no_service_dependency:
+    description: "API包应该保持轻量，不依赖业务服务实现"
+    check: "API包的Maven依赖中不应包含 Service、Mapper、DB等"
+    correct_pattern: "API包仅依赖DTO、基础类库"
+    violation_warning: "⚠️ 检测到【{api_name}】依赖了业务实现组件【{dependency}】"
+  
+  # 规则3：循环依赖检测
+  rule_3_circular_dependency:
+    description: "不允许循环依赖"
+    check: "检测依赖图中的环"
+    violation_warning: "⚠️ 检测到循环依赖：{dependency_chain}"
+  
+  # 规则4：BFF不应访问数据库
+  rule_4_bff_no_database:
+    description: "BFF层不应该直接访问数据库"
+    check: "BFF的运行时依赖中不应包含数据库"
+    correct_pattern: "BFF通过RPC调用业务服务"
+    violation_warning: "⚠️ 检测到【{bff_name}】直接访问数据库，违反BFF架构原则"
+```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 依赖关系图
+    
+    ### Maven/Gradle 依赖关系
+    ```mermaid
+    graph TD
+        {自动生成Maven依赖图}
+    ```
+    
+    ### RPC 调用关系
+    ```mermaid
+    graph LR
+        {自动生成RPC调用图}
+    ```
+    
+    ### 中间件依赖
+    | 项目名称 | 数据库 | Redis | MQ | 注册中心 | 配置中心 |
+    |---------|-------|-------|----|---------|---------| 
+    {动态生成表格}
+    
+    ### ⚠️ 依赖规则检查
+    {列出所有检测到的问题和警告}
+    
+    **❓ 确认问题**：
+    1. 依赖关系是否正确？
+    2. 是否存在不合理的依赖？
+    3. 对于检测到的警告，是否需要调整？
+    
+    **请回复**："确认无误" 或 说明例外情况
+```
+
+## 📋 阶段5：职责边界划分
+
+### 引导问题
+
+> 现在让我们明确每个项目的职责边界。
+> 
+> **问题5.1：业务服务职责**
+> 对于每个业务服务，请说明：
+> 
+> **A. 服务使用场景**
+> - 什么业务场景需要调用该服务？
+> - 谁会调用该服务（BFF、其他服务、定时任务）？
+> 
+> **B. 核心职责（应该做什么）**
+> - 该服务应该实现哪些业务逻辑？
+> - 核心业务能力有哪些？
+> 
+> **C. 职责边界（不应该做什么）**
+> - 哪些功能不应该在该服务中实现？
+> - 与其他服务的职责划分是什么？
+> 
+> **示例回答**：
+> ```
+> user-service（用户服务）
+> 
+> A. 服务使用场景：
+> - 用户注册登录时
+> - 用户信息查询修改时
+> - 其他服务需要验证用户身份时
+> 调用方：user-admin、user-portal、order-service
+> 
+> B. 核心职责：
+> ✅ 用户注册、登录、登出
+> ✅ 用户信息管理（查询、修改）
+> ✅ 用户权限管理
+> ✅ 用户身份验证
+> 
+> C. 职责边界：
+> ❌ 不负责订单管理（order-service负责）
+> ❌ 不负责支付逻辑（payment-service负责）
+> ❌ 不负责消息推送（notification-service负责）
+> 
+> 与其他服务的边界：
+> - 与order-service：user-service只提供用户信息，订单创建归order-service
+> - 与payment-service：user-service只验证用户身份，支付流程归payment-service
+> ```
+
+### 职责冲突检测
+
+```yaml
+responsibility_conflict_detection:
+  # 检测1：重复职责
+  check_1_duplicate_responsibility:
+    description: "检测多个服务是否有重复职责"
+    method: "分析各服务的核心职责描述，识别重叠部分"
+    output: |
+      ⚠️ **职责重叠警告**：
+      - 【{service_a}】和【{service_b}】都声称负责【{responsibility}】
+      - 建议明确归属或拆分职责
+  
+  # 检测2：职责缺失
+  check_2_missing_responsibility:
+    description: "检测是否有业务功能无人负责"
+    method: "对比用户描述的业务需求和服务职责清单"
+    output: |
+      ⚠️ **职责缺失警告**：
+      - 【{business_function}】功能未明确归属到任何服务
+      - 建议指定负责的服务
+  
+  # 检测3：职责不清
+  check_3_unclear_boundary:
+    description: "检测职责边界是否清晰"
+    method: "分析'不应该做什么'是否与'应该做什么'明确对应"
+    output: |
+      ⚠️ **职责边界模糊警告**：
+      - 【{service_name}】的职责边界描述不够清晰
+      - 建议补充与【{related_service}】的边界说明
+```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 职责边界矩阵
+    
+    | 服务名称 | 使用场景 | 核心职责 | 不应负责 | 边界服务 |
+    |---------|---------|---------|---------|---------|
+    {动态生成表格}
+    
+    ### 职责分布图
+    ```mermaid
+    mindmap
+      root((业务领域))
+        {service_1}
+          {responsibility_1}
+          {responsibility_2}
+        {service_2}
+          {responsibility_3}
+          {responsibility_4}
+    ```
+    
+    ### ⚠️ 职责检查结果
+    {列出所有检测到的职责问题}
+    
+    **❓ 确认问题**：
+    1. 每个服务的职责描述是否准确？
+    2. 职责边界是否清晰？
+    3. 是否存在职责重叠或缺失？
+    
+    **请回复**："确认无误" 或 调整职责划分
+```
+
+## 📋 阶段6：内部架构设计
+
+### 引导问题（针对业务服务）
+
+> 最后，让我们详细梳理业务服务的内部架构。
+> 
+> **问题6.1：DDD四层架构详解**
+> （如果在阶段3选择了DDD架构）
+> 
+> 对于【{业务服务名称}】，请描述每一层的职责：
+> 
+> ### **Controller层（OHS - 开放主机服务层）**
+> 
+> **问题**：Controller层负责什么？
+> 
+> 💡 **标准职责**：
+> - ✅ RPC端点实现（实现API包中的Facade接口）
+> - ✅ 参数校验
+> - ✅ DTO转换（DTO ↔ Domain Model）
+> - ✅ 调用App层服务
+> - ✅ 异常捕获和转换
+> 
+> **禁止**：
+> - ❌ 包含业务逻辑
+> - ❌ 直接调用Domain层或Infr层
+> 
+> **您的回答**：[确认按标准执行 / 有特殊情况需说明]
+> 
+> ---
+> 
+> ### **App层（应用层）**
+> 
+> **问题**：App层负责什么？
+> 
+> 💡 **标准职责**：
+> - ✅ 编排Domain层的能力
+> - ✅ 管理事务边界（@Transactional）
+> - ✅ 协调多个聚合根的交互
+> - ✅ 调用Infr层（发消息、缓存等）
+> - ✅ 发布领域事件
+> 
+> **禁止**：
+> - ❌ 包含业务规则（业务规则在Domain层）
+> - ❌ 直接操作数据库（通过Repository接口）
+> 
+> **设计原则**：薄薄一层，只做编排不做计算
+> 
+> **您的回答**：[确认按标准执行 / 有特殊情况需说明]
+> 
+> ---
+> 
+> ### **Domain层（领域层 - 核心层）**
+> 
+> **问题**：请列出核心领域对象（聚合根、实体、值对象）
+> 
+> 💡 **标准职责**：
+> - ✅ 定义实体（Entity）、值对象（Value Object）、聚合根（Aggregate Root）
+> - ✅ 实现业务规则和业务逻辑
+> - ✅ 定义领域服务（Domain Service）
+> - ✅ 定义Repository接口（不实现）
+> 
+> **禁止**：
+> - ❌ 依赖其他层（App、Controller、Infr）
+> - ❌ 包含技术细节（数据库、HTTP、缓存）
+> 
+> **设计原则**：充血模型，对象有数据也有行为
+> 
+> **示例回答**：
+> ```
+> user-service的领域对象：
+> 
+> 聚合根：
+> - User（用户）：管理用户信息、密码、状态
+> 
+> 实体：
+> - UserProfile（用户档案）：用户的详细信息
+> 
+> 值对象：
+> - Password（密码）：封装密码加密逻辑
+> - Email（邮箱）：封装邮箱验证逻辑
+> 
+> 领域服务：
+> - UserDomainService：用户名唯一性校验
+> 
+> Repository接口：
+> - UserRepository：用户持久化接口
+> ```
+> 
+> ---
+> 
+> ### **Infr层（基础设施层）**
+> 
+> **问题**：Infr层包含哪些组件？
+> 
+> 💡 **标准职责**：
+> - ✅ 实现Domain层定义的Repository接口
+> - ✅ 数据库访问（Mapper、DAO）
+> - ✅ 外部系统集成（HTTP Client、RPC Client）
+> - ✅ 消息队列（MQ Producer/Consumer）
+> - ✅ 缓存（Redis）
+> 
+> **禁止**：
+> - ❌ 包含业务逻辑
+> - ❌ 修改聚合根的业务状态
+> 
+> **示例回答**：
+> ```
+> user-service的Infr层：
+> 
+> Repository实现：
+> - UserRepositoryImpl：实现UserRepository接口
+> 
+> Mapper：
+> - UserMapper：MyBatis数据访问
+> 
+> 外部客户端：
+> - SmsClient：短信发送客户端
+> 
+> MQ：
+> - UserEventProducer：用户事件发布
+> 
+> Redis：
+> - UserCacheService：用户缓存管理
+> ```
+
+### 目录结构确认
+
+```yaml
+directory_structure_confirmation:
+  trigger: "用户描述完四层架构后"
+  
+  output: |
+    ## 📁 推荐目录结构
+    
+    基于您的描述，推荐的目录结构如下：
+    
+    ```
+    {业务服务名称}/
+    └── src/main/java/com/company/{service}/
+        ├── controller/              # OHS层（RPC端点）
+        │   ├── {domain1}/
+        │   │   ├── {Domain1}Controller.java
+        │   │   └── converter/
+        │   │       └── {Domain1}Converter.java
+        │   └── {domain2}/
+        │       └── {Domain2}Controller.java
+        │
+        ├── app/                     # 应用层（编排）
+        │   ├── {domain1}/
+        │   │   ├── {Domain1}ApplicationService.java
+        │   │   └── command/
+        │   │       ├── Create{Domain1}Command.java
+        │   │       └── Query{Domain1}Command.java
+        │   └── {domain2}/
+        │       └── {Domain2}ApplicationService.java
+        │
+        ├── domain/                  # 领域层（核心）
+        │   ├── {domain1}/
+        │   │   ├── model/
+        │   │   │   ├── {Domain1}.java          # 聚合根
+        │   │   │   ├── {Domain1}Status.java    # 枚举
+        │   │   │   └── {ValueObject}.java      # 值对象
+        │   │   ├── repository/
+        │   │   │   └── {Domain1}Repository.java  # 仓储接口
+        │   │   └── service/
+        │   │       └── {Domain1}DomainService.java  # 领域服务
+        │   └── {domain2}/
+        │       ├── model/
+        │       ├── repository/
+        │       └── service/
+        │
+        └── infr/                    # 基础设施层
+            ├── db/                  # 数据库相关
+            │   ├── repository/
+            │   │   └── {Domain1}RepositoryImpl.java
+            │   ├── mapper/
+            │   │   └── {Domain1}Mapper.java
+            │   ├── po/
+            │   │   └── {Domain1}PO.java
+            │   └── converter/
+            │       └── {Domain1}Converter.java
+            │
+            ├── mq/                  # 消息队列
+            │   ├── producer/
+            │   └── consumer/
+            │
+            ├── redis/               # Redis缓存
+            │
+            ├── client/              # 外部系统客户端
+            │
+            └── util/                # 通用工具类
+    ```
+    
+    **❓ 确认问题**：
+    1. 目录结构是否符合您的项目组织方式？
+    2. 是否有特殊的分包要求？
+    
+    **请回复**："确认无误" 或 说明调整需求
+```
+
+### 确认机制
+
+```yaml
+confirmation_output:
+  format: |
+    ## 📊 内部架构总结
+    
+    ### 【{业务服务名称}】四层架构
+    
+    ```mermaid
+    graph TD
+        Controller[Controller层<br/>RPC端点] --> App[App层<br/>编排]
+        App --> Domain[Domain层<br/>核心业务逻辑]
+        Domain -.定义接口.-> Infr[Infr层<br/>技术实现]
+        
+        subgraph "领域对象"
+            AggregateRoot[聚合根]
+            Entity[实体]
+            ValueObject[值对象]
+        end
+        
+        Domain --> AggregateRoot
+        Domain --> Entity
+        Domain --> ValueObject
+    ```
+    
+    ### 核心领域对象清单
+    | 类型 | 名称 | 职责 | 文件路径 |
+    |-----|------|------|---------|
+    {动态生成表格}
+    
+    ### 依赖倒置验证
+    - ✅ Controller → App → Domain
+    - ✅ Infr → Domain（实现接口）
+    - ✅ Domain 不依赖任何层
+    
+    **❓ 确认问题**：
+    1. 四层架构的职责划分是否清晰？
+    2. 领域对象的识别是否准确？
+    3. 是否符合DDD设计原则？
+    
+    **请回复**："确认无误" 或 提出调整意见
+```
+
+## 📄 最终输出：生成架构文档
+
+### 文档生成触发
+
+```yaml
+document_generation_trigger:
+  condition: "所有6个阶段确认完成"
+  
+  user_prompt: |
+    ## ✅ 架构梳理完成
+    
+    感谢您的配合！所有架构信息已收集完毕。
+    
+    **接下来我将为您生成**：
+    1. `{应用名称}_ARCHITECTURE.md` - 应用架构文档
+    2. 架构全景图（Mermaid格式）
+    3. 依赖关系图（Mermaid格式）
+    4. 职责边界矩阵
+    5. 开发规范和禁忌
+    
+    **文档将包含**：
+    - 📐 架构概述
+    - 🎯 模块职责定义
+    - 🔗 依赖关系图
+    - 📝 开发规范
+    - ⚠️ 开发禁忌
+    - 🎯 DDD架构详解（如适用）
+    
+    **请确认**：是否开始生成架构文档？
+    
+    **回复**："开始生成" 或 "我还需要修改XXX部分"
+```
+
+### 文档结构模板
+
+```markdown
+# {应用名称} 架构规范
+
+## 📐 架构概述
+
+{基于阶段1的应用全景}
+
+**架构模式**：{BFF + 微服务 / 单体 / 其他}
+
+```mermaid
+{完整架构图}
+```
+
+---
+
+## 🎯 模块职责定义
+
+{基于阶段2、3、5的信息}
+
+### {项目名称}（{项目类型}）
+
+**定位**：{项目定位}
+
+**职责**：
+{核心职责列表}
+
+**⚠️ 禁止**：
+{禁止事项列表}
+
+**目录结构**：
+```
+{目录结构}
+```
+
+**示例代码**：
+```java
+{示例代码}
+```
+
+---
+
+## 🔗 模块依赖关系
+
+{基于阶段4的依赖关系}
+
+```mermaid
+{依赖关系图}
+```
+
+### 依赖规则：
+{依赖规则列表}
+
+---
+
+## 📂 DDD 四层架构详解
+
+{基于阶段6的内部架构，仅在选择DDD时生成}
+
+### 第一层：Controller（OHS层）
+{详细说明}
+
+### 第二层：App（应用层）
+{详细说明}
+
+### 第三层：Domain（领域层）
+{详细说明}
+
+### 第四层：Infr（基础设施层）
+{详细说明}
+
+---
+
+## 📝 开发规范
+
+### 1. 新增业务功能流程
+{开发流程说明}
+
+### 2. 代码分层职责
+{职责表格}
+
+### 3. 命名规范
+{命名规范}
+
+---
+
+## ⚠️ 开发禁忌
+
+{基于依赖规则和职责边界生成的禁忌列表}
+
+---
+
+## 🎯 架构优势
+
+{总结架构的优势}
+
+---
+
+**最后更新**：{YYYY-MM-DD}
+**维护者**：{用户提供或默认}
+```
+
+### 生成后验证
+
+```yaml
+post_generation_validation:
+  validation_checklist:
+    - "✅ 所有项目都已描述"
+    - "✅ 依赖关系清晰完整"
+    - "✅ 职责边界明确"
+    - "✅ 架构图正确渲染"
+    - "✅ 示例代码准确"
+    - "✅ 开发规范完整"
+  
+  user_confirmation: |
+    ## ✅ 架构文档已生成
+    
+    文档路径：`{file_path}`
+    
+    **请您查看并确认**：
+    1. 架构描述是否准确？
+    2. 是否有需要补充的内容？
+    3. 示例代码是否符合实际？
+    
+    **如需修改**：请指出具体需要调整的部分
+    **如无问题**：回复"确认无误"，架构梳理完成
+```
+
+## 🔧 特殊场景处理
+
+### 场景1：用户不确定项目类型
+
+```yaml
+uncertain_project_type_handling:
+  detection: "用户表示不确定或描述模糊"
+  
+  guided_questions:
+    question_1: "该项目是否有启动类（main方法）？"
+    question_2: "该项目是否独立部署？"
+    question_3: "该项目是否提供HTTP接口或RPC接口？"
+    question_4: "该项目是否访问数据库？"
+    question_5: "该项目是否调用其他服务？"
+  
+  type_inference_logic:
+    - if_no_main: "可能是公共组件或API包"
+    - if_has_http_and_db: "可能是业务服务"
+    - if_has_http_no_db: "可能是BFF"
+    - if_call_other_services: "可能是BFF或业务服务"
+    - if_only_interface: "可能是API包"
+```
+
+### 场景2：用户描述的架构不符合最佳实践
+
+```yaml
+architecture_anti_pattern_detection:
+  detection_rules:
+    - bff_access_database: "检测到BFF直接访问数据库"
+    - api_has_implementation: "检测到API包包含实现代码"
+    - circular_dependency: "检测到循环依赖"
+    - unclear_responsibility: "检测到职责不清"
+  
+  handling_strategy:
+    approach: "温和提醒 + 提供改进建议"
+    
+    message_template: |
+      ⚠️ **架构建议**
+      
+      我注意到【{issue_description}】，这可能会带来以下问题：
+      {potential_problems}
+      
+      **建议的改进方案**：
+      {improvement_suggestions}
+      
+      **您可以选择**：
+      1. 接受建议，调整架构设计
+      2. 说明特殊原因，保持当前设计
+      3. 讨论其他可能的方案
+      
+      **您的选择**：[1/2/3]
+```
+
+### 场景3：多应用复杂依赖
+
+```yaml
+multi_application_dependency_handling:
+  detection: "应用数量 > 1 且存在跨应用依赖"
+  
+  additional_questions:
+    question_1: "各应用之间是如何通信的？（HTTP/RPC/MQ）"
+    question_2: "是否有统一的API网关？"
+    question_3: "应用之间的数据是否共享？"
+    question_4: "是否有跨应用的事务？"
+  
+  documentation_enhancement:
+    - "生成跨应用依赖图"
+    - "说明应用间通信协议"
+    - "标注数据隔离边界"
+    - "提示分布式事务风险"
+```
+
+## 🎯 质量保障
+
+### 完整性检查
+
+```yaml
+completeness_check:
+  required_information:
+    - "✅ 应用清单完整"
+    - "✅ 项目清单完整"
+    - "✅ 项目类型明确"
+    - "✅ 依赖关系清晰"
+    - "✅ 职责边界明确"
+    - "✅ 内部架构详细（业务服务）"
+  
+  missing_information_handling: "主动提醒用户补充"
+```
+
+### 一致性检查
+
+```yaml
+consistency_check:
+  check_rules:
+    - "项目类型与职责描述一致"
+    - "依赖关系与架构模式一致"
+    - "内部架构与项目类型一致"
+  
+  inconsistency_alert: "发现不一致时立即提醒用户"
+```
+
+### 合理性检查
+
+```yaml
+rationality_check:
+  check_rules:
+    - "BFF不应有数据库依赖"
+    - "API包不应有业务依赖"
+    - "不应有循环依赖"
+    - "业务服务应有明确职责"
+  
+  warning_level:
+    high: "严重违反架构原则，强烈建议修改"
+    medium: "可能存在架构问题，建议评估"
+    low: "设计可优化，供参考"
+```
+
+## 📊 进度追踪
+
+### 进度展示
+
+在每个阶段开始时展示进度：
+
+```
+📍 **当前进度**：阶段 {current} / 6
+
+已完成：
+✅ 阶段1：应用全景识别
+✅ 阶段2：项目清单梳理
+⏳ 阶段3：项目类型定义（进行中）
+⬜ 阶段4：依赖关系梳理
+⬜ 阶段5：职责边界划分
+⬜ 阶段6：内部架构设计
+```
+
+### 中断恢复
+
+```yaml
+interruption_recovery:
+  context_preservation:
+    - "记录当前阶段"
+    - "记录已收集的信息"
+    - "记录待确认的问题"
+  
+  resume_prompt: |
+    欢迎回来！我们之前进行到【阶段{N}：{阶段名}】
+    
+    **已收集的信息**：
+    {已有信息摘要}
+    
+    **接下来**：{下一步骤}
+    
+    您可以选择：
+    1. 继续当前阶段
+    2. 修改之前的信息
+    3. 从头开始
+```
+
+## 🎓 使用指南
+
+### 快速开始
+
+```
+用户：帮我梳理应用架构
+AI：好的！让我们从整体开始...【启动阶段1】
+```
+
+### 最佳实践
+
+1. **准备材料**：
+   - 项目清单（Maven/Gradle模块）
+   - 项目依赖关系（pom.xml/build.gradle）
+   - 业务需求文档
+
+2. **回答技巧**：
+   - 先概括后细化
+   - 不确定时说明情况
+   - 及时反馈不合理的问题
+
+3. **文档使用**：
+   - 生成后与团队评审
+   - 作为新人培训材料
+   - 定期更新维护
+
+---
+
+**版本**：v1.0
+**最后更新**：2025-10-31
+**维护者**：开发团队

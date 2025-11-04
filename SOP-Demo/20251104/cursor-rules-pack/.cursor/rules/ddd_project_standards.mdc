@@ -1,0 +1,1603 @@
+---
+alwaysApply: false
+---
+# DDD（领域驱动设计）项目规范
+
+> **使用场景**：在DDD架构的项目中，遵循此规范确保代码组织清晰、职责分明、易于维护。
+
+---
+
+## 🏗️ DDD架构分层
+
+```yaml
+ddd_architecture:
+  core_principle: "按职责分层，依赖倒置，领域层是核心"
+  
+  layer_structure:
+    # ===== 开放主机层（OHS - Open Host Service）=====
+    ohs_layer:
+      name: "开放主机层"
+      path: "ohs/"
+      responsibility: "进程间交互，对外暴露接口端点"
+      
+      sub_layers:
+        http:
+          path: "ohs/http/"
+          purpose: "HTTP端点（REST API）"
+          contains: ["Controller", "DTO", "Request", "Response"]
+          
+        rpc:
+          path: "ohs/rpc/"
+          purpose: "RPC端点（gRPC、Dubbo等）"
+          contains: ["RpcService", "Proto定义", "RPC DTO"]
+      
+      key_rules:
+        - "只能包含数据传输对象（DTO），不能有业务逻辑"
+        - "依赖应用层（Application Layer）进行能力编排"
+        - "不能直接依赖领域层（Domain Layer）"
+        - "负责参数校验、协议转换、异常处理"
+    
+    # ===== 应用层（Application Layer）=====
+    application_layer:
+      name: "应用层"
+      path: "application/"
+      responsibility: "编排领域层的能力，提供复合能力"
+      
+      key_rules:
+        - "编排多个领域服务完成业务用例"
+        - "管理事务边界"
+        - "不包含业务规则，业务规则在领域层"
+        - "可以依赖领域层和基础设施层"
+        - "薄薄一层，只做编排不做计算"
+    
+    # ===== 领域层（Domain Layer）=====
+    domain_layer:
+      name: "领域层"
+      path: "domain/"
+      responsibility: "表达业务概念、业务状态信息和业务规则，是最基本的能力单元"
+      
+      structure:
+        subdomain:
+          path: "domain/{子域名}/"
+          purpose: "按限界上下文划分子域"
+          
+          model:
+            path: "domain/{子域名}/model/"
+            contains: ["实体（Entity）", "值对象（Value Object）", "聚合根（Aggregate Root）"]
+            
+          repository:
+            path: "domain/{子域名}/repository/"
+            contains: ["仓储接口（Repository Interface）"]
+            note: "只定义接口，不实现"
+            
+          service:
+            path: "domain/{子域名}/service/"
+            contains: ["领域服务（Domain Service）"]
+            purpose: "无法归属于单一实体/值对象的业务逻辑"
+      
+      key_rules:
+        - "不依赖任何其他层（依赖倒置）"
+        - "包含核心业务规则和业务逻辑"
+        - "充血模型：实体和值对象有数据也有行为"
+        - "仓储只定义接口，实现在基础设施层"
+    
+    # ===== 基础设施层（Infrastructure Layer）=====
+    infrastructure_layer:
+      name: "基础设施层"
+      path: "infr/"
+      responsibility: "提供技术支撑，与业务无关的基础代码"
+      
+      sub_layers:
+        lib:
+          path: "infr/lib/"
+          purpose: "通用工具库"
+          contains: ["工具类", "通用组件", "技术框架封装"]
+          examples: ["DateUtils", "StringUtils", "JsonUtils", "加密工具", "文件处理工具"]
+        
+        aop:
+          path: "infr/aop/"
+          purpose: "切面编程"
+          contains: ["日志切面", "事务切面", "权限切面", "性能监控切面"]
+          examples: ["LogAspect", "PermissionAspect", "PerformanceAspect", "ExceptionHandlerAspect"]
+        
+        repository_impl:
+          path: "infr/repository/"
+          purpose: "仓储实现"
+          contains: ["Repository实现", "Mapper", "数据库访问", "PO对象", "所有增删改查操作"]
+          note: "⚠️ 仓储层的入参只能是领域模型或关键字段（如ID），返回值必须是领域模型"
+        
+        plugin:
+          path: "infr/plugin/"
+          purpose: "中间件集成与配置"
+          contains: ["Redis配置", "MQ配置", "ES配置", "缓存配置", "消息队列Producer/Consumer"]
+          examples: ["RedisConfig", "RabbitMQConfig", "ElasticsearchConfig", "KafkaProducer", "CacheManager"]
+        
+        client:
+          path: "infr/client/"
+          purpose: "外部系统集成"
+          contains: ["HTTP Client", "RPC Client", "第三方API封装"]
+          examples: ["PaymentClient", "InventoryClient", "UserServiceClient", "ThirdPartyApiClient"]
+      
+      key_rules:
+        - "实现领域层定义的仓储接口"
+        - "处理技术细节（数据库、缓存、消息队列等）"
+        - "可以被应用层和领域层依赖"
+        - "不包含业务逻辑"
+        - "⚠️ 仓储层的增删改查只在仓储实现，领域模型只包含业务行为"
+        - "⚠️ 仓储方法的入参只能是领域模型或关键字段（如ID），返回值必须是领域模型"
+```
+
+---
+
+## 📐 分层职责详解
+
+### 1️⃣ 开放主机层（OHS）
+
+#### 职责说明
+
+**核心职责**：进程间交互的边界，对外暴露接口端点
+
+**能做什么**：
+- ✅ 接收外部请求（HTTP、RPC）
+- ✅ 参数校验（格式、必填项、范围）
+- ✅ 协议转换（DTO ↔ Domain Model）
+- ✅ 调用应用层服务
+- ✅ 异常捕获和转换
+- ✅ 返回响应
+
+**不能做什么**：
+- ❌ 包含业务逻辑
+- ❌ 直接操作数据库
+- ❌ 直接调用领域服务
+- ❌ 包含业务规则判断
+
+#### HTTP端点示例
+
+```java
+package com.example.ohs.http.quote;
+
+import com.example.application.quote.QuoteApplicationService;
+import com.example.ohs.http.quote.dto.CreateQuoteRequest;
+import com.example.ohs.http.quote.dto.CreateQuoteResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 报价单HTTP接口
+ * 
+ * <p>职责：
+ * <ul>
+ *   <li>接收HTTP请求</li>
+ *   <li>参数校验</li>
+ *   <li>DTO转换</li>
+ *   <li>调用应用层服务</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@RestController
+@RequestMapping("/api/quotes")
+@RequiredArgsConstructor
+@Slf4j
+public class QuoteController {
+    
+    private final QuoteApplicationService quoteApplicationService;
+    
+    /**
+     * 创建报价单
+     */
+    @PostMapping
+    public CreateQuoteResponse createQuote(
+        @Validated @RequestBody CreateQuoteRequest request
+    ) {
+        log.info("接收创建报价单请求，customerId: {}", request.getCustomerId());
+        
+        try {
+            // 1. DTO转换为领域对象（通过Converter）
+            CreateQuoteCommand command = QuoteConverter.toCommand(request);
+            
+            // 2. 调用应用层服务（只做编排，不做业务逻辑）
+            Quote quote = quoteApplicationService.createQuote(command);
+            
+            // 3. 领域对象转换为DTO
+            CreateQuoteResponse response = QuoteConverter.toResponse(quote);
+            
+            log.info("报价单创建成功，quoteId: {}", quote.getId());
+            return response;
+            
+        } catch (BusinessException e) {
+            log.error("创建报价单失败，业务异常：{}", e.getMessage());
+            throw new HttpBusinessException(e.getMessage(), e.getErrorCode());
+        } catch (Exception e) {
+            log.error("创建报价单失败，系统异常", e);
+            throw new HttpSystemException("系统异常，请稍后重试");
+        }
+    }
+}
+```
+
+#### DTO定义
+
+```java
+package com.example.ohs.http.quote.dto;
+
+import lombok.Data;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Positive;
+import java.util.List;
+
+/**
+ * 创建报价单请求DTO
+ * 
+ * <p>注意：
+ * <ul>
+ *   <li>DTO只包含数据，不包含业务逻辑</li>
+ *   <li>使用校验注解确保数据合法性</li>
+ *   <li>不要直接暴露领域对象</li>
+ * </ul>
+ */
+@Data
+public class CreateQuoteRequest {
+    
+    /** 客户ID */
+    @NotNull(message = "客户ID不能为空")
+    @Positive(message = "客户ID必须大于0")
+    private Long customerId;
+    
+    /** 报价项列表 */
+    @NotNull(message = "报价项不能为空")
+    private List<QuoteItemDTO> items;
+    
+    /** 备注 */
+    private String remark;
+}
+```
+
+#### RPC端点示例
+
+```java
+package com.example.ohs.rpc.quote;
+
+import com.example.application.quote.QuoteApplicationService;
+import com.example.ohs.rpc.quote.proto.*;
+import io.grpc.stub.StreamObserver;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.devh.boot.grpc.server.service.GrpcService;
+
+/**
+ * 报价单gRPC服务
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@GrpcService
+@RequiredArgsConstructor
+@Slf4j
+public class QuoteGrpcService extends QuoteServiceGrpc.QuoteServiceImplBase {
+    
+    private final QuoteApplicationService quoteApplicationService;
+    
+    @Override
+    public void createQuote(
+        CreateQuoteProtoRequest request,
+        StreamObserver<CreateQuoteProtoResponse> responseObserver
+    ) {
+        log.info("接收gRPC创建报价单请求");
+        
+        try {
+            // 1. Proto转换为Command
+            CreateQuoteCommand command = ProtoConverter.toCommand(request);
+            
+            // 2. 调用应用层
+            Quote quote = quoteApplicationService.createQuote(command);
+            
+            // 3. 转换为Proto响应
+            CreateQuoteProtoResponse response = ProtoConverter.toProtoResponse(quote);
+            
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+            
+        } catch (Exception e) {
+            log.error("gRPC创建报价单失败", e);
+            responseObserver.onError(e);
+        }
+    }
+}
+```
+
+---
+
+### 2️⃣ 应用层（Application）
+
+#### 职责说明
+
+**核心职责**：编排领域层的能力，提供业务用例的实现
+
+**能做什么**：
+- ✅ 编排多个领域服务
+- ✅ 管理事务边界
+- ✅ 协调聚合根之间的交互
+- ✅ 调用基础设施层（发消息、缓存等）
+- ✅ 发布领域事件
+
+**不能做什么**：
+- ❌ 包含业务规则（业务规则在领域层）
+- ❌ 直接操作数据库（通过仓储）
+- ❌ 包含复杂计算逻辑
+
+**设计原则**：薄薄一层，只做编排不做计算
+
+#### 应用服务示例
+
+```java
+package com.example.application.quote;
+
+import com.example.domain.quote.model.Quote;
+import com.example.domain.quote.repository.QuoteRepository;
+import com.example.domain.quote.service.QuotePricingService;
+import com.example.domain.customer.model.Customer;
+import com.example.domain.customer.repository.CustomerRepository;
+import com.example.infr.event.EventPublisher;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 报价单应用服务
+ * 
+ * <p><b>职责</b>：编排领域能力，完成业务用例
+ * 
+ * <p><b>注意事项</b>：
+ * <ul>
+ *   <li>只做编排，不做计算</li>
+ *   <li>业务逻辑在领域层，不在应用层</li>
+ *   <li>管理事务边界（@Transactional）</li>
+ *   <li>协调多个聚合根的交互</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class QuoteApplicationService {
+    
+    // ========== 领域层依赖 ==========
+    private final QuoteRepository quoteRepository;
+    private final CustomerRepository customerRepository;
+    private final QuotePricingService quotePricingService;
+    
+    // ========== 基础设施层依赖 ==========
+    private final EventPublisher eventPublisher;
+    
+    /**
+     * 创建报价单（业务用例）
+     * 
+     * <p><b>编排步骤</b>：
+     * <ol>
+     *   <li>查询客户信息（仓储）</li>
+     *   <li>创建报价单（聚合根）</li>
+     *   <li>计算价格（领域服务）</li>
+     *   <li>保存报价单（仓储）</li>
+     *   <li>发布领域事件（基础设施）</li>
+     * </ol>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Quote createQuote(CreateQuoteCommand command) {
+        log.info("开始创建报价单，customerId: {}", command.getCustomerId());
+        
+        // ========== 步骤1：查询客户信息 ==========
+        // 说明：通过仓储获取聚合根
+        Customer customer = customerRepository.findById(command.getCustomerId())
+            .orElseThrow(() -> new BusinessException("客户不存在"));
+        
+        // ========== 步骤2：创建报价单 ==========
+        // 说明：调用聚合根的工厂方法，业务规则在聚合根内部
+        Quote quote = Quote.create(
+            customer,
+            command.getItems(),
+            command.getRemark()
+        );
+        
+        // ========== 步骤3：计算价格 ==========
+        // 说明：调用领域服务完成复杂计算
+        quotePricingService.calculatePrice(quote, customer);
+        
+        // ========== 步骤4：保存报价单 ==========
+        // 说明：通过仓储持久化聚合根
+        quoteRepository.save(quote);
+        
+        // ========== 步骤5：发布领域事件 ==========
+        // 说明：通知其他上下文
+        eventPublisher.publish(new QuoteCreatedEvent(quote.getId(), customer.getId()));
+        
+        log.info("报价单创建成功，quoteId: {}", quote.getId());
+        return quote;
+    }
+    
+    /**
+     * 提交报价单（业务用例）
+     * 
+     * <p><b>编排步骤</b>：
+     * <ol>
+     *   <li>查询报价单</li>
+     *   <li>校验客户信用（协调多个聚合）</li>
+     *   <li>提交报价单（聚合根状态变更）</li>
+     *   <li>保存</li>
+     *   <li>发送通知（基础设施）</li>
+     * </ol>
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void submitQuote(Long quoteId, Long operatorId) {
+        log.info("开始提交报价单，quoteId: {}", quoteId);
+        
+        // 1. 查询报价单
+        Quote quote = quoteRepository.findById(quoteId)
+            .orElseThrow(() -> new BusinessException("报价单不存在"));
+        
+        // 2. 查询客户（跨聚合协调）
+        Customer customer = customerRepository.findById(quote.getCustomerId())
+            .orElseThrow(() -> new BusinessException("客户不存在"));
+        
+        // 3. 校验客户信用（领域服务协调多个聚合）
+        if (!customer.hasSufficientCredit(quote.getTotalAmount())) {
+            throw new BusinessException("客户信用额度不足");
+        }
+        
+        // 4. 提交报价单（聚合根状态变更，业务规则在聚合根内）
+        quote.submit(operatorId);
+        
+        // 5. 保存
+        quoteRepository.save(quote);
+        
+        // 6. 发送通知（基础设施）
+        eventPublisher.publish(new QuoteSubmittedEvent(quoteId));
+        
+        log.info("报价单提交成功");
+    }
+}
+```
+
+#### Command对象
+
+```java
+package com.example.application.quote;
+
+import lombok.Builder;
+import lombok.Data;
+import java.util.List;
+
+/**
+ * 创建报价单命令
+ * 
+ * <p>Command对象用于封装应用层的输入参数
+ * <ul>
+ *   <li>不可变对象（使用Builder模式）</li>
+ *   <li>参数已在OHS层校验</li>
+ *   <li>包含业务用例所需的所有信息</li>
+ * </ul>
+ */
+@Data
+@Builder
+public class CreateQuoteCommand {
+    
+    /** 客户ID */
+    private final Long customerId;
+    
+    /** 报价项 */
+    private final List<QuoteItemCommand> items;
+    
+    /** 备注 */
+    private final String remark;
+}
+```
+
+---
+
+### 3️⃣ 领域层（Domain）
+
+#### 职责说明
+
+**核心职责**：表达业务概念、业务状态、业务规则
+
+**DDD核心**：领域层是整个系统的核心，包含了业务的本质
+
+**能做什么**：
+- ✅ 定义实体（Entity）
+- ✅ 定义值对象（Value Object）
+- ✅ 定义聚合根（Aggregate Root）
+- ✅ 实现业务规则和业务逻辑
+- ✅ 定义领域服务（Domain Service）
+- ✅ 定义仓储接口（Repository Interface）
+- ✅ 发布领域事件
+
+**不能做什么**：
+- ❌ 依赖其他层（应用层、基础设施层、OHS层）
+- ❌ 包含技术细节（数据库、HTTP、缓存）
+- ❌ 直接持久化数据
+
+**设计原则**：充血模型，对象有数据也有行为
+
+#### 3.1 实体（Entity）
+
+**定义**：有唯一标识，有生命周期，状态可变
+
+```java
+package com.example.domain.quote.model;
+
+import com.example.domain.shared.Entity;
+import lombok.Getter;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 报价单（聚合根）
+ * 
+ * <p><b>聚合根职责</b>：
+ * <ul>
+ *   <li>维护聚合内的一致性边界</li>
+ *   <li>对外提供业务操作方法</li>
+ *   <li>包含业务规则和约束</li>
+ *   <li>管理聚合内的实体和值对象</li>
+ * </ul>
+ * 
+ * <p><b>设计原则</b>：
+ * <ul>
+ *   <li>充血模型：有数据也有行为</li>
+ *   <li>封装：私有字段，通过方法操作</li>
+ *   <li>不变性：使用final字段，避免setter</li>
+ *   <li>业务方法：反映业务语言</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@Getter
+public class Quote implements Entity<Long> {
+    
+    // ========== 聚合根标识 ==========
+    /** 报价单ID */
+    private final Long id;
+    
+    // ========== 基本属性 ==========
+    /** 客户ID */
+    private final Long customerId;
+    
+    /** 报价单状态 */
+    private QuoteStatus status;
+    
+    /** 报价项列表（聚合内的实体） */
+    private final List<QuoteItem> items;
+    
+    /** 总金额 */
+    private BigDecimal totalAmount;
+    
+    /** 创建时间 */
+    private final LocalDateTime createdTime;
+    
+    /** 提交时间 */
+    private LocalDateTime submittedTime;
+    
+    // ========== 构造函数（私有）==========
+    
+    private Quote(Long id, Long customerId, List<QuoteItem> items, BigDecimal totalAmount) {
+        this.id = id;
+        this.customerId = customerId;
+        this.items = new ArrayList<>(items);
+        this.totalAmount = totalAmount;
+        this.status = QuoteStatus.DRAFT;
+        this.createdTime = LocalDateTime.now();
+    }
+    
+    // ========== 工厂方法 ==========
+    
+    /**
+     * 创建报价单（工厂方法）
+     * 
+     * <p><b>业务规则</b>：
+     * <ul>
+     *   <li>报价项不能为空</li>
+     *   <li>初始状态为草稿</li>
+     *   <li>总金额初始为0</li>
+     * </ul>
+     * 
+     * @param customer 客户
+     * @param itemCommands 报价项命令
+     * @param remark 备注
+     * @return 报价单
+     */
+    public static Quote create(
+        Customer customer,
+        List<QuoteItemCommand> itemCommands,
+        String remark
+    ) {
+        // 业务规则：报价项不能为空
+        if (itemCommands == null || itemCommands.isEmpty()) {
+            throw new BusinessException("报价项不能为空");
+        }
+        
+        // 业务规则：客户必须有效
+        if (!customer.isActive()) {
+            throw new BusinessException("客户已失效，无法创建报价单");
+        }
+        
+        // 创建报价项
+        List<QuoteItem> items = itemCommands.stream()
+            .map(cmd -> QuoteItem.create(cmd.getProductId(), cmd.getQuantity()))
+            .collect(Collectors.toList());
+        
+        return new Quote(null, customer.getId(), items, BigDecimal.ZERO);
+    }
+    
+    // ========== 业务方法 ==========
+    
+    /**
+     * 提交报价单
+     * 
+     * <p><b>业务规则</b>：
+     * <ul>
+     *   <li>只有草稿状态可以提交</li>
+     *   <li>总金额必须大于0</li>
+     *   <li>报价项不能为空</li>
+     * </ul>
+     * 
+     * @param operatorId 操作人ID
+     */
+    public void submit(Long operatorId) {
+        // 业务规则：只有草稿状态可以提交
+        if (this.status != QuoteStatus.DRAFT) {
+            throw new BusinessException("只有草稿状态的报价单可以提交");
+        }
+        
+        // 业务规则：总金额必须大于0
+        if (this.totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("报价单总金额必须大于0");
+        }
+        
+        // 业务规则：报价项不能为空
+        if (this.items.isEmpty()) {
+            throw new BusinessException("报价项不能为空");
+        }
+        
+        // 状态变更
+        this.status = QuoteStatus.SUBMITTED;
+        this.submittedTime = LocalDateTime.now();
+        
+        // 发布领域事件（在聚合根内发布）
+        DomainEventPublisher.publish(new QuoteSubmittedEvent(this.id, operatorId));
+    }
+    
+    /**
+     * 添加报价项
+     * 
+     * <p><b>业务规则</b>：
+     * <ul>
+     *   <li>只有草稿状态可以添加</li>
+     *   <li>产品不能重复</li>
+     * </ul>
+     */
+    public void addItem(QuoteItem item) {
+        // 业务规则：只有草稿状态可以添加
+        if (this.status != QuoteStatus.DRAFT) {
+            throw new BusinessException("只有草稿状态可以添加报价项");
+        }
+        
+        // 业务规则：产品不能重复
+        boolean exists = this.items.stream()
+            .anyMatch(i -> i.getProductId().equals(item.getProductId()));
+        if (exists) {
+            throw new BusinessException("产品已存在，不能重复添加");
+        }
+        
+        this.items.add(item);
+    }
+    
+    /**
+     * 删除报价项
+     */
+    public void removeItem(Long itemId) {
+        if (this.status != QuoteStatus.DRAFT) {
+            throw new BusinessException("只有草稿状态可以删除报价项");
+        }
+        
+        this.items.removeIf(item -> item.getId().equals(itemId));
+    }
+    
+    /**
+     * 计算总金额（内部方法）
+     * 
+     * <p>说明：由领域服务调用，聚合根负责维护总金额一致性
+     */
+    public void calculateTotalAmount() {
+        this.totalAmount = this.items.stream()
+            .map(QuoteItem::getSubtotal)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    /**
+     * 应用折扣
+     * 
+     * <p><b>业务规则</b>：
+     * <ul>
+     *   <li>折扣率必须在0-1之间</li>
+     *   <li>只有草稿状态可以应用折扣</li>
+     * </ul>
+     */
+    public void applyDiscount(BigDecimal discountRate) {
+        // 业务规则校验
+        if (discountRate.compareTo(BigDecimal.ZERO) < 0 
+            || discountRate.compareTo(BigDecimal.ONE) > 0) {
+            throw new BusinessException("折扣率必须在0-1之间");
+        }
+        
+        if (this.status != QuoteStatus.DRAFT) {
+            throw new BusinessException("只有草稿状态可以应用折扣");
+        }
+        
+        // 对每个报价项应用折扣
+        this.items.forEach(item -> item.applyDiscount(discountRate));
+        
+        // 重新计算总金额
+        calculateTotalAmount();
+    }
+    
+    // ========== 查询方法 ==========
+    
+    /**
+     * 是否可以修改
+     */
+    public boolean isEditable() {
+        return this.status == QuoteStatus.DRAFT;
+    }
+    
+    /**
+     * 是否已提交
+     */
+    public boolean isSubmitted() {
+        return this.status == QuoteStatus.SUBMITTED 
+            || this.status == QuoteStatus.APPROVED
+            || this.status == QuoteStatus.REJECTED;
+    }
+    
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+}
+```
+
+#### 3.2 值对象（Value Object）
+
+**定义**：无唯一标识，不可变，通过属性值判断相等
+
+```java
+package com.example.domain.quote.model;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import java.math.BigDecimal;
+
+/**
+ * 金额（值对象）
+ * 
+ * <p><b>值对象特征</b>：
+ * <ul>
+ *   <li>不可变：所有字段final，无setter</li>
+ *   <li>通过值判断相等，不是通过ID</li>
+ *   <li>无唯一标识</li>
+ *   <li>可以被共享</li>
+ * </ul>
+ * 
+ * <p><b>业务含义</b>：
+ * 金额不仅仅是一个数字，还包含币种、精度等业务概念
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@Getter
+@EqualsAndHashCode  // 通过值判断相等
+public class Money {
+    
+    /** 金额 */
+    private final BigDecimal amount;
+    
+    /** 币种 */
+    private final Currency currency;
+    
+    // ========== 构造函数（私有）==========
+    
+    private Money(BigDecimal amount, Currency currency) {
+        // 业务规则：金额不能为负数
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("金额不能为负数");
+        }
+        
+        this.amount = amount;
+        this.currency = currency;
+    }
+    
+    // ========== 工厂方法 ==========
+    
+    /**
+     * 创建人民币金额
+     */
+    public static Money ofCNY(BigDecimal amount) {
+        return new Money(amount, Currency.CNY);
+    }
+    
+    /**
+     * 创建美元金额
+     */
+    public static Money ofUSD(BigDecimal amount) {
+        return new Money(amount, Currency.USD);
+    }
+    
+    /**
+     * 零元
+     */
+    public static Money zero(Currency currency) {
+        return new Money(BigDecimal.ZERO, currency);
+    }
+    
+    // ========== 业务方法（返回新对象，不修改自身）==========
+    
+    /**
+     * 加法（返回新的Money对象）
+     */
+    public Money add(Money other) {
+        // 业务规则：只能相同币种相加
+        if (!this.currency.equals(other.currency)) {
+            throw new BusinessException("不同币种无法相加");
+        }
+        
+        return new Money(this.amount.add(other.amount), this.currency);
+    }
+    
+    /**
+     * 减法
+     */
+    public Money subtract(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new BusinessException("不同币种无法相减");
+        }
+        
+        return new Money(this.amount.subtract(other.amount), this.currency);
+    }
+    
+    /**
+     * 乘法
+     */
+    public Money multiply(BigDecimal multiplier) {
+        return new Money(this.amount.multiply(multiplier), this.currency);
+    }
+    
+    /**
+     * 除法
+     */
+    public Money divide(BigDecimal divisor) {
+        if (divisor.compareTo(BigDecimal.ZERO) == 0) {
+            throw new IllegalArgumentException("除数不能为0");
+        }
+        
+        return new Money(
+            this.amount.divide(divisor, 2, BigDecimal.ROUND_HALF_UP), 
+            this.currency
+        );
+    }
+    
+    /**
+     * 比较大小
+     */
+    public boolean greaterThan(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new BusinessException("不同币种无法比较");
+        }
+        
+        return this.amount.compareTo(other.amount) > 0;
+    }
+    
+    public boolean lessThan(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new BusinessException("不同币种无法比较");
+        }
+        
+        return this.amount.compareTo(other.amount) < 0;
+    }
+    
+    @Override
+    public String toString() {
+        return currency.getSymbol() + amount.toString();
+    }
+}
+
+/**
+ * 币种枚举
+ */
+enum Currency {
+    CNY("¥", "人民币"),
+    USD("$", "美元"),
+    EUR("€", "欧元");
+    
+    private final String symbol;
+    private final String name;
+    
+    Currency(String symbol, String name) {
+        this.symbol = symbol;
+        this.name = name;
+    }
+    
+    public String getSymbol() {
+        return symbol;
+    }
+    
+    public String getName() {
+        return name;
+    }
+}
+```
+
+#### 3.3 领域服务（Domain Service）
+
+**定义**：无法归属于单一实体/值对象的业务逻辑
+
+**使用场景**：
+- 跨聚合的业务逻辑
+- 复杂的业务规则
+- 需要协调多个对象的操作
+
+```java
+package com.example.domain.quote.service;
+
+import com.example.domain.quote.model.Quote;
+import com.example.domain.quote.model.QuoteItem;
+import com.example.domain.customer.model.Customer;
+import com.example.domain.product.model.Product;
+import com.example.domain.product.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+
+/**
+ * 报价单定价领域服务
+ * 
+ * <p><b>领域服务特征</b>：
+ * <ul>
+ *   <li>无状态：不保存数据</li>
+ *   <li>协调多个领域对象</li>
+ *   <li>包含复杂业务规则</li>
+ *   <li>不属于单一实体或值对象</li>
+ * </ul>
+ * 
+ * <p><b>何时使用领域服务</b>：
+ * <ul>
+ *   <li>业务操作涉及多个聚合</li>
+ *   <li>业务规则无法归属于单一实体</li>
+ *   <li>需要复杂的计算逻辑</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@Service
+@RequiredArgsConstructor
+public class QuotePricingService {
+    
+    private final ProductRepository productRepository;
+    
+    /**
+     * 计算报价单价格（领域服务方法）
+     * 
+     * <p><b>业务规则</b>：
+     * <ol>
+     *   <li>查询每个产品的价格</li>
+     *   <li>根据客户等级应用折扣</li>
+     *   <li>计算每个报价项的小计</li>
+     *   <li>计算报价单总金额</li>
+     * </ol>
+     * 
+     * <p>说明：
+     * 这个业务逻辑需要协调Quote、QuoteItem、Customer、Product多个对象，
+     * 无法归属于单一聚合，因此放在领域服务中。
+     * 
+     * @param quote 报价单聚合根
+     * @param customer 客户
+     */
+    public void calculatePrice(Quote quote, Customer customer) {
+        // 1. 为每个报价项计算价格
+        for (QuoteItem item : quote.getItems()) {
+            // 查询产品信息
+            Product product = productRepository.findById(item.getProductId())
+                .orElseThrow(() -> new BusinessException("产品不存在"));
+            
+            // 获取基础价格
+            BigDecimal basePrice = product.getPrice();
+            
+            // 应用客户等级折扣
+            BigDecimal discountRate = customer.getDiscountRate();
+            BigDecimal discountedPrice = basePrice.multiply(
+                BigDecimal.ONE.subtract(discountRate)
+            );
+            
+            // 设置报价项价格（调用聚合内实体的方法）
+            item.setPrice(discountedPrice);
+        }
+        
+        // 2. 计算报价单总金额（调用聚合根方法）
+        quote.calculateTotalAmount();
+    }
+    
+    /**
+     * 计算优惠金额
+     * 
+     * <p><b>业务规则</b>：
+     * <ul>
+     *   <li>VIP客户享受额外优惠</li>
+     *   <li>订单金额超过10万享受额外折扣</li>
+     * </ul>
+     */
+    public BigDecimal calculateDiscount(Quote quote, Customer customer) {
+        BigDecimal totalAmount = quote.getTotalAmount();
+        BigDecimal discount = BigDecimal.ZERO;
+        
+        // 业务规则：VIP客户额外优惠5%
+        if (customer.isVip()) {
+            discount = discount.add(totalAmount.multiply(new BigDecimal("0.05")));
+        }
+        
+        // 业务规则：订单金额超过10万额外优惠3%
+        if (totalAmount.compareTo(new BigDecimal("100000")) > 0) {
+            discount = discount.add(totalAmount.multiply(new BigDecimal("0.03")));
+        }
+        
+        return discount;
+    }
+}
+```
+
+#### 3.4 仓储接口（Repository Interface）
+
+**定义**：领域层只定义接口，实现在基础设施层
+
+**核心原则**：依赖倒置
+
+```java
+package com.example.domain.quote.repository;
+
+import com.example.domain.quote.model.Quote;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 报价单仓储接口
+ * 
+ * <p><b>仓储模式职责</b>：
+ * <ul>
+ *   <li>封装聚合根的持久化和重建</li>
+ *   <li>提供集合语义的接口</li>
+ *   <li>隐藏数据库访问细节</li>
+ * </ul>
+ * 
+ * <p><b>设计原则</b>：
+ * <ul>
+ *   <li>领域层只定义接口</li>
+ *   <li>基础设施层实现接口</li>
+ *   <li>使用集合语义（save、remove）而非数据库语义（insert、delete）</li>
+ *   <li>以聚合根为单位操作</li>
+ * </ul>
+ * 
+ * <p><b>⚠️ 方法签名规范</b>：
+ * <ul>
+ *   <li>入参：只能是领域模型或关键字段（如ID）</li>
+ *   <li>返回值：必须是领域模型或Optional&lt;领域模型&gt;</li>
+ *   <li>禁止：入参或返回值使用PO、DTO等非领域对象</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+public interface QuoteRepository {
+    
+    /**
+     * 保存报价单（新增或更新）
+     * 
+     * <p>说明：使用集合语义，不区分insert和update
+     */
+    Quote save(Quote quote);
+    
+    /**
+     * 根据ID查询
+     * 
+     * <p>返回：完整的聚合根（包含所有聚合内实体）
+     */
+    Optional<Quote> findById(Long id);
+    
+    /**
+     * 根据客户ID查询报价单列表
+     */
+    List<Quote> findByCustomerId(Long customerId);
+    
+    /**
+     * 根据状态查询
+     */
+    List<Quote> findByStatus(QuoteStatus status);
+    
+    /**
+     * 删除报价单
+     * 
+     * <p>说明：
+     * <ul>
+     *   <li>使用ID作为入参（关键字段）</li>
+     *   <li>物理删除或逻辑删除由实现决定</li>
+     * </ul>
+     */
+    void remove(Long id);
+    
+    /**
+     * 检查报价单是否存在
+     */
+    boolean existsById(Long id);
+}
+```
+
+---
+
+### 4️⃣ 基础设施层（Infrastructure）
+
+#### 职责说明
+
+**核心职责**：提供技术支撑，实现领域层定义的接口
+
+**能做什么**：
+- ✅ 实现仓储接口
+- ✅ 数据库访问（Mapper、JPA）
+- ✅ 外部系统集成（HTTP Client、RPC Client）
+- ✅ 中间件集成（Redis、MQ、ES等）
+- ✅ 缓存管理
+- ✅ 切面编程（日志、事务、权限）
+- ✅ 通用工具库
+- ✅ 领域对象与PO的转换
+- ✅ 所有数据库的增删改查操作
+
+**不能做什么**：
+- ❌ 包含业务逻辑
+- ❌ 修改聚合根的业务状态
+- ❌ 在仓储方法中进行业务规则校验
+
+**重要原则**：
+- ⚠️ **职责边界**：领域模型只包含业务行为，仓储层处理所有存储相关操作
+- ⚠️ **方法签名**：仓储方法的入参只能是领域模型或关键字段（如ID），返回值必须是领域模型
+- ⚠️ **数据转换**：仓储层负责领域对象和PO的双向转换，领域层不感知数据库结构
+
+#### 仓储实现示例
+
+```java
+package com.example.infr.repository;
+
+import com.example.domain.quote.model.Quote;
+import com.example.domain.quote.model.QuoteStatus;
+import com.example.domain.quote.repository.QuoteRepository;
+import com.example.infr.repository.mapper.QuoteMapper;
+import com.example.infr.repository.po.QuotePO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * 报价单仓储实现
+ * 
+ * <p><b>职责</b>：
+ * <ul>
+ *   <li>实现领域层定义的仓储接口</li>
+ *   <li>领域对象与数据库对象的转换</li>
+ *   <li>数据库访问细节封装</li>
+ * </ul>
+ * 
+ * @author xinjin
+ * @date 2025-10-29
+ */
+@Repository
+@RequiredArgsConstructor
+public class QuoteRepositoryImpl implements QuoteRepository {
+    
+    private final QuoteMapper quoteMapper;
+    private final QuoteItemMapper quoteItemMapper;
+    
+    @Override
+    public Quote save(Quote quote) {
+        // 1. 领域对象转换为PO
+        QuotePO quotePO = QuoteConverter.toPO(quote);
+        
+        // 2. 保存或更新
+        if (quote.getId() == null) {
+            quoteMapper.insert(quotePO);
+        } else {
+            quoteMapper.updateById(quotePO);
+        }
+        
+        // 3. 保存报价项（聚合内的实体）
+        for (QuoteItem item : quote.getItems()) {
+            QuoteItemPO itemPO = QuoteItemConverter.toPO(item, quotePO.getId());
+            if (item.getId() == null) {
+                quoteItemMapper.insert(itemPO);
+            } else {
+                quoteItemMapper.updateById(itemPO);
+            }
+        }
+        
+        // 4. PO转换为领域对象返回
+        return QuoteConverter.toDomain(quotePO, quote.getItems());
+    }
+    
+    @Override
+    public Optional<Quote> findById(Long id) {
+        // 1. 查询主表
+        QuotePO quotePO = quoteMapper.selectById(id);
+        if (quotePO == null) {
+            return Optional.empty();
+        }
+        
+        // 2. 查询报价项（聚合内的实体）
+        List<QuoteItemPO> itemPOs = quoteItemMapper.selectByQuoteId(id);
+        List<QuoteItem> items = itemPOs.stream()
+            .map(QuoteItemConverter::toDomain)
+            .collect(Collectors.toList());
+        
+        // 3. 组装完整的聚合根
+        Quote quote = QuoteConverter.toDomain(quotePO, items);
+        
+        return Optional.of(quote);
+    }
+    
+    @Override
+    public List<Quote> findByCustomerId(Long customerId) {
+        List<QuotePO> quotePOs = quoteMapper.selectByCustomerId(customerId);
+        
+        return quotePOs.stream()
+            .map(po -> {
+                List<QuoteItemPO> itemPOs = quoteItemMapper.selectByQuoteId(po.getId());
+                List<QuoteItem> items = itemPOs.stream()
+                    .map(QuoteItemConverter::toDomain)
+                    .collect(Collectors.toList());
+                return QuoteConverter.toDomain(po, items);
+            })
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<Quote> findByStatus(QuoteStatus status) {
+        List<QuotePO> quotePOs = quoteMapper.selectByStatus(status.name());
+        
+        return quotePOs.stream()
+            .map(po -> {
+                List<QuoteItemPO> itemPOs = quoteItemMapper.selectByQuoteId(po.getId());
+                List<QuoteItem> items = itemPOs.stream()
+                    .map(QuoteItemConverter::toDomain)
+                    .collect(Collectors.toList());
+                return QuoteConverter.toDomain(po, items);
+            })
+            .collect(Collectors.toList());
+    }
+    
+    @Override
+    public void remove(Long id) {
+        // 1. 删除报价项
+        quoteItemMapper.deleteByQuoteId(id);
+        
+        // 2. 删除主表
+        quoteMapper.deleteById(id);
+    }
+    
+    @Override
+    public boolean existsById(Long id) {
+        return quoteMapper.selectById(id) != null;
+    }
+}
+```
+
+#### Mapper示例
+
+```java
+package com.example.infr.repository.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.infr.repository.po.QuotePO;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+
+/**
+ * 报价单Mapper
+ * 
+ * <p>说明：使用MyBatis Plus简化CRUD操作
+ */
+@Mapper
+public interface QuoteMapper extends BaseMapper<QuotePO> {
+    
+    /**
+     * 根据客户ID查询
+     */
+    List<QuotePO> selectByCustomerId(@Param("customerId") Long customerId);
+    
+    /**
+     * 根据状态查询
+     */
+    List<QuotePO> selectByStatus(@Param("status") String status);
+}
+```
+
+---
+
+## 🔗 依赖关系规则
+
+```yaml
+dependency_rules:
+  core_principle: "依赖倒置，领域层不依赖任何层"
+  
+  # ===== 允许的依赖关系 =====
+  allowed_dependencies:
+    ohs_layer:
+      can_depend_on:
+        - "应用层（Application）"
+        - "基础设施层（Infrastructure）- 仅工具类"
+      cannot_depend_on:
+        - "领域层（Domain）- 不能直接调用"
+    
+    application_layer:
+      can_depend_on:
+        - "领域层（Domain）"
+        - "基础设施层（Infrastructure）"
+      cannot_depend_on:
+        - "OHS层"
+    
+    domain_layer:
+      can_depend_on:
+        - "无 - 领域层不依赖任何层"
+      cannot_depend_on:
+        - "所有其他层"
+      note: "依赖倒置：领域层定义接口，其他层实现接口"
+    
+    infrastructure_layer:
+      can_depend_on:
+        - "领域层（Domain）- 实现领域接口"
+      cannot_depend_on:
+        - "OHS层"
+        - "应用层"
+      note: "实现领域层定义的接口，不能反向依赖"
+  
+  # ===== 依赖关系图 =====
+  dependency_diagram: |
+    ┌──────────────────┐
+    │   OHS Layer      │ ← 对外接口
+    │  (HTTP/RPC)      │
+    └────────┬─────────┘
+             ↓ 依赖
+    ┌──────────────────┐
+    │ Application      │ ← 编排层
+    │    Layer         │
+    └────────┬─────────┘
+             ↓ 依赖
+    ┌──────────────────┐
+    │   Domain         │ ← 核心层（不依赖任何层）
+    │    Layer         │
+    └────────┬─────────┘
+             ↑ 定义接口
+    ┌────────┴─────────┐
+    │ Infrastructure   │ ← 技术支撑层
+    │    Layer         │
+    └──────────────────┘
+  
+  # ===== 违反依赖规则的案例 =====
+  anti_patterns:
+    case_1:
+      description: "❌ OHS层直接调用领域服务"
+      wrong_code: |
+        @RestController
+        public class QuoteController {
+            @Autowired
+            private QuotePricingService pricingService;  // ❌ 错误
+            
+            @PostMapping
+            public void createQuote() {
+                // 直接调用领域服务
+                pricingService.calculatePrice(...);  // ❌ 跳过应用层
+            }
+        }
+      
+      correct_code: |
+        @RestController
+        public class QuoteController {
+            @Autowired
+            private QuoteApplicationService applicationService;  // ✅ 正确
+            
+            @PostMapping
+            public void createQuote() {
+                // 调用应用层，由应用层编排领域服务
+                applicationService.createQuote(...);  // ✅ 通过应用层
+            }
+        }
+    
+    case_2:
+      description: "❌ 领域层依赖基础设施层"
+      wrong_code: |
+        @Service
+        public class QuotePricingService {
+            @Autowired
+            private QuoteMapper quoteMapper;  // ❌ 领域层不能依赖Mapper
+            
+            public void calculatePrice() {
+                Quote quote = quoteMapper.selectById(...);  // ❌ 错误
+            }
+        }
+      
+      correct_code: |
+        @Service
+        public class QuotePricingService {
+            private final QuoteRepository quoteRepository;  // ✅ 依赖接口
+            
+            public void calculatePrice() {
+                Quote quote = quoteRepository.findById(...);  // ✅ 通过仓储接口
+            }
+        }
+    
+    case_3:
+      description: "❌ 基础设施层包含业务逻辑"
+      wrong_code: |
+        @Repository
+        public class QuoteRepositoryImpl {
+            public Quote save(Quote quote) {
+                // ❌ 在仓储中包含业务规则
+                if (quote.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new BusinessException("金额必须大于0");
+                }
+                // ...
+            }
+        }
+      
+      correct_code: |
+        // 业务规则应在领域层
+        public class Quote {
+            public void submit() {
+                // ✅ 业务规则在聚合根中
+                if (this.totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new BusinessException("金额必须大于0");
+                }
+                // ...
+            }
+        }
+```
+
+---
+
+## 📛 命名规范
+
+```yaml
+naming_conventions:
+  # ===== OHS层命名 =====
+  ohs_layer_naming:
+    controller:
+      pattern: "{业务名}Controller"
+      examples: ["QuoteController", "CustomerController"]
+    
+    dto:
+      request: "{操作名}Request"
+      response: "{操作名}Response"
+      examples: ["CreateQuoteRequest", "QueryQuoteResponse"]
+    
+    rpc_service:
+      pattern: "{业务名}GrpcService"
+      examples: ["QuoteGrpcService", "OrderGrpcService"]
+  
+  # ===== 应用层命名 =====
+  application_layer_naming:
+    service:
+      pattern: "{业务名}ApplicationService"
+      examples: ["QuoteApplicationService", "OrderApplicationService"]
+    
+    command:
+      pattern: "{操作名}Command"
+      examples: ["CreateQuoteCommand", "SubmitOrderCommand"]
+  
+  # ===== 领域层命名 =====
+  domain_layer_naming:
+    aggregate_root:
+      pattern: "{业务概念名}"
+      examples: ["Quote", "Order", "Customer"]
+      note: "使用业务语言，不加后缀"
+    
+    entity:
+      pattern: "{业务概念名}"
+      examples: ["QuoteItem", "OrderLine"]
+    
+    value_object:
+      pattern: "{业务概念名}"
+      examples: ["Money", "Address", "PhoneNumber"]
+    
+    domain_service:
+      pattern: "{业务名}{动作}Service"
+      examples: ["QuotePricingService", "OrderShippingService"]
+    
+    repository_interface:
+      pattern: "{聚合根名}Repository"
+      examples: ["QuoteRepository", "OrderRepository"]
+    
+    domain_event:
+      pattern: "{聚合根名}{动作过去式}Event"
+      examples: ["QuoteCreatedEvent", "OrderSubmittedEvent"]
+  
+  # ===== 基础设施层命名 =====
+  infrastructure_layer_naming:
+    repository_impl:
+      pattern: "{聚合根名}RepositoryImpl"
+      examples: ["QuoteRepositoryImpl", "OrderRepositoryImpl"]
+    
+    mapper:
+      pattern: "{实体名}Mapper"
+      examples: ["QuoteMapper", "OrderMapper"]
+    
+    po:
+      pattern: "{实体名}PO"
+      examples: ["QuotePO", "OrderPO"]
+      note: "PO = Persistent Object"
+    
+    client:
+      pattern: "{外部系统名}Client"
+      examples: ["PaymentClient", "InventoryClient"]
+```
+
+---
+
+## ✅ 设计检查清单
+
+### 分层检查
+
+- [ ] OHS层只包含DTO，没有业务逻辑？
+- [ ] 应用层只做编排，没有业务规则？
+- [ ] 领域层包含所有业务规则？
+- [ ] 领域层不依赖其他层？
+- [ ] 基础设施层实现了领域接口？
+
+### 聚合设计检查
+
+- [ ] 聚合边界是否清晰？
+- [ ] 聚合根是否维护了聚合内的一致性？
+- [ ] 是否通过聚合根访问聚合内的实体？
+- [ ] 跨聚合的操作是否通过领域服务或应用层？
+
+### 充血模型检查
+
+- [ ] 实体是否包含业务方法，不是只有getter/setter？
+- [ ] 业务规则是否在实体内部，不是在Service？
+- [ ] 是否使用final字段，避免随意修改？
+- [ ] 是否通过业务方法修改状态，不是直接setter？
+
+### 依赖检查
+
+- [ ] 依赖方向是否正确（领域层不依赖任何层）？
+- [ ] 是否使用了依赖倒置（领域层定义接口）？
+- [ ] 是否避免了循环依赖？
+
+---
+
+## 📚 参考资源
+
+- 主提示词：`.cursor/rules/java_coding_assistant_v2.mdc`
+- 实现设计模板：`.cursor/rules/implementation_design_template.mdc`
+- 单元测试规范：`.cursor/rules/unit_test_guidelines.mdc`
+- Eric Evans《领域驱动设计》
+- Vaughn Vernon《实现领域驱动设计》
+
+---
+
+**文档版本**：v1.0
+**最后更新**：2025-10-29
+**维护者**：xinjin
