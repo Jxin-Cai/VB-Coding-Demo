@@ -1,0 +1,126 @@
+# 敏捷估点服务配置文件 (Agile Planning Poker Service Configuration)
+
+server:
+  # 服务器端口
+  port: 8080
+  # 绑定所有网络接口（支持局域网访问）
+  address: 0.0.0.0
+
+spring:
+  application:
+    # 应用名称
+    name: planning-poker-service
+
+  # Web MVC 配置
+  web:
+    resources:
+      # 静态资源处理
+      add-mappings: true
+      # 静态资源路径(从classpath:/static/读取,支持IDE和JAR运行)
+      static-locations:
+        - classpath:/static/
+  
+  # MVC配置
+  mvc:
+    # 不抛出NoResourceFoundException
+    throw-exception-if-no-handler-found: false
+    # 日志记录请求详情
+    log-request-details: false
+
+  # H2 内存数据库配置
+  datasource:
+    # 内存数据库URL
+    url: jdbc:h2:mem:planningpoker
+    # 驱动类
+    driver-class-name: org.h2.Driver
+    # 用户名
+    username: sa
+    # 密码（空）
+    password: 
+    
+  # H2 控制台配置
+  h2:
+    console:
+      # 开启H2控制台
+      enabled: true
+      # 控制台访问路径
+      path: /h2-console
+      settings:
+        # 允许跟踪
+        trace: true
+        # 允许远程访问
+        web-allow-others: true
+
+  # SQL初始化配置
+  sql:
+    init:
+      # 始终执行SQL脚本（开发环境）
+      mode: always
+      # Schema脚本位置
+      schema-locations: classpath:schema.sql
+      # 数据脚本位置
+      data-locations: classpath:data.sql
+      # 编码
+      encoding: UTF-8
+      # 继续执行（即使SQL失败）
+      continue-on-error: false
+
+# MyBatis 配置
+mybatis:
+  # Mapper XML文件位置
+  mapper-locations: classpath:mapper/*.xml
+  
+  # 类型别名包（简化XML中的类型引用）
+  type-aliases-package: com.example.planningpoker.infrastructure.persistence
+  
+  # MyBatis全局配置
+  configuration:
+    # 下划线转驼峰命名
+    map-underscore-to-camel-case: true
+    
+    # 开启二级缓存
+    cache-enabled: true
+    
+    # 懒加载配置
+    lazy-loading-enabled: false
+    aggressive-lazy-loading: false
+    
+    # 日志实现（开发环境使用标准输出）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    
+    # 默认执行器类型
+    default-executor-type: REUSE
+    
+    # 默认语句超时时间（秒）
+    default-statement-timeout: 25
+
+# 日志配置
+logging:
+  level:
+    # 根日志级别
+    root: INFO
+    # 应用包日志级别
+    com.example.planningpoker: DEBUG
+    # MyBatis日志级别
+    org.mybatis: DEBUG
+    # SQL日志级别
+    org.apache.ibatis: DEBUG
+    # 静态资源处理器（忽略favicon等静态资源404）
+    org.springframework.web.servlet.resource: WARN
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: WARN
+  # 日志格式
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    # API文档路径
+    path: /v3/api-docs
+  swagger-ui:
+    # Swagger UI路径
+    path: /swagger-ui.html
+    # 启用过滤器
+    filter: true
+    # 默认展开
+    doc-expansion: list

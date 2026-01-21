@@ -1,0 +1,227 @@
+/**
+ * 黑色主题设计系统
+ * 
+ * 包含颜色、阴影、尺寸等所有设计token
+ * 使用CSS Variables实现运行时可修改的主题系统
+ */
+
+:root {
+  /* ========== 颜色系统 ========== */
+  
+  /* 背景色 - 黑色系 */
+  --color-bg-primary: #0a0a0a;      /* 页面主背景 */
+  --color-bg-secondary: #1a1a1a;    /* 卡片/容器背景 */
+  --color-bg-tertiary: #2a2a2a;     /* 悬浮元素背景 */
+  --color-bg-elevated: #333333;     /* 高层元素背景 */
+  
+  /* 边框和分隔线 */
+  --color-border-primary: #2a2a2a;
+  --color-border-secondary: #333333;
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  
+  /* 文本颜色 */
+  --color-text-primary: #e0e0e0;    /* 主要文本 - 高对比度 */
+  --color-text-secondary: #a0a0a0;  /* 次要文本 - 中对比度 */
+  --color-text-tertiary: #666666;   /* 辅助文本 - 低对比度 */
+  --color-text-disabled: #4a4a4a;   /* 禁用文本 */
+  
+  /* 强调色 - 霓虹色 */
+  --color-accent-green: #00ff88;    /* 成功/完成状态 */
+  --color-accent-pink: #ff0088;     /* 警告/进行中状态 */
+  --color-accent-blue: #00d4ff;     /* 选中/hover状态 */
+  --color-accent-orange: #ff9800;   /* 次要警告 */
+  --color-accent-purple: #a855f7;   /* 特殊状态 */
+  
+  /* 语义化颜色 */
+  --color-success: var(--color-accent-green);
+  --color-warning: var(--color-accent-orange);
+  --color-error: var(--color-accent-pink);
+  --color-info: var(--color-accent-blue);
+  
+  /* ========== 阴影系统 ========== */
+  
+  /* 常规阴影 */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
+  
+  /* 霓虹光晕 - 青绿色 (成功/完成) */
+  --shadow-glow-green: 
+    0 0 20px rgba(0, 255, 136, 0.3),
+    0 0 40px rgba(0, 255, 136, 0.1);
+  --shadow-glow-green-strong: 
+    0 0 20px rgba(0, 255, 136, 0.5),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.1);
+  
+  /* 霓虹光晕 - 品红色 (警告/进行中) */
+  --shadow-glow-pink: 
+    0 0 20px rgba(255, 0, 136, 0.3),
+    0 0 40px rgba(255, 0, 136, 0.1);
+  --shadow-glow-pink-strong: 
+    0 0 20px rgba(255, 0, 136, 0.5),
+    0 0 40px rgba(255, 0, 136, 0.3),
+    0 0 60px rgba(255, 0, 136, 0.1);
+  
+  /* 霓虹光晕 - 青蓝色 (hover/选中) */
+  --shadow-glow-blue: 
+    0 0 20px rgba(0, 212, 255, 0.3),
+    0 0 40px rgba(0, 212, 255, 0.1);
+  --shadow-glow-blue-strong: 
+    0 0 20px rgba(0, 212, 255, 0.5),
+    0 0 40px rgba(0, 212, 255, 0.3),
+    0 0 60px rgba(0, 212, 255, 0.1);
+  
+  /* ========== 尺寸系统 ========== */
+  
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  
+  /* 字号 */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  --font-size-4xl: 48px;
+  --font-size-5xl: 64px;
+  --font-size-6xl: 72px;
+  
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* 行高 */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* ========== 过渡和动画 ========== */
+  
+  /* 过渡时长 */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 600ms;
+  --duration-slower: 800ms;
+  
+  /* 缓动函数 */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* ========== 层级 (z-index) ========== */
+  --z-base: 0;
+  --z-elevated: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  
+  /* ========== 玻璃态效果 ========== */
+  --glass-bg: rgba(26, 26, 26, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(20px);
+  
+  /* ========== 渐变 ========== */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+  --gradient-warning: linear-gradient(135deg, #ff9800 0%, #ff0088 100%);
+  --gradient-dark: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  --gradient-neon: linear-gradient(135deg, #00ff88 0%, #00d4ff 50%, #ff0088 100%);
+}
+
+/* ========== 玻璃态工具类 ========== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+/* 不支持backdrop-filter的降级 */
+@supports not (backdrop-filter: blur(20px)) {
+  .glass-card {
+    background: rgba(26, 26, 26, 0.95);
+  }
+}
+
+/* ========== 霓虹文字效果 ========== */
+.text-neon-green {
+  color: var(--color-accent-green);
+  text-shadow: var(--shadow-glow-green);
+}
+
+.text-neon-pink {
+  color: var(--color-accent-pink);
+  text-shadow: var(--shadow-glow-pink);
+}
+
+.text-neon-blue {
+  color: var(--color-accent-blue);
+  text-shadow: var(--shadow-glow-blue);
+}
+
+/* ========== 渐变边框效果 ========== */
+.border-gradient {
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(var(--color-bg-secondary), var(--color-bg-secondary)),
+    var(--gradient-neon);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* ========== 响应式断点 ========== */
+/* 使用media query时参考 */
+/* Mobile: < 768px */
+/* Tablet: 768px - 1200px */
+/* Desktop: > 1200px */
+
+/* ========== 可访问性支持 ========== */
+/* 用户偏好减少动画时的降级 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 10ms;
+    --duration-normal: 10ms;
+    --duration-slow: 10ms;
+    --duration-slower: 10ms;
+  }
+}
+
+/* ========== 调试工具 (开发时使用) ========== */
+/* 添加 .debug-colors 到 body 查看所有颜色 */
+.debug-colors {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: var(--color-bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  z-index: 9999;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+}

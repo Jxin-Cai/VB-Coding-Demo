@@ -1,0 +1,11 @@
+# 开发环境配置（IDE 运行时使用）
+spring:
+  web:
+    resources:
+      # 静态资源路径 - 开发环境使用绝对路径
+      static-locations:
+        - classpath:/static/
+        - file:/Users/jxin/Agent/VB-Coding-Demo/sdd/spec-kit-demo/001-agile-planning-poker/frontend/dist/
+        
+# 开启开发工具（可选，实现热重载）
+# 如需启用，在 pom.xml 添加 spring-boot-devtools 依赖

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.planningpoker.infrastructure.persistence.BacklogPoolMapper">
+    
+    <!-- 结果映射 -->
+    <resultMap id="BacklogPoolResultMap" type="com.example.planningpoker.infrastructure.persistence.BacklogPoolPO">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+    
+    <!-- 插入需求池 -->
+    <insert id="insert" parameterType="com.example.planningpoker.infrastructure.persistence.BacklogPoolPO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO backlog_pool (name, description, created_by, created_at)
+        VALUES (#{name}, #{description}, #{createdBy}, #{createdAt})
+    </insert>
+    
+    <!-- 更新需求池 -->
+    <update id="update" parameterType="com.example.planningpoker.infrastructure.persistence.BacklogPoolPO">
+        UPDATE backlog_pool
+        SET name = #{name},
+            description = #{description}
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 根据ID查询需求池 -->
+    <select id="selectById" resultMap="BacklogPoolResultMap">
+        SELECT id, name, description, created_by, created_at
+        FROM backlog_pool
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 查询所有需求池 -->
+    <select id="selectAll" resultMap="BacklogPoolResultMap">
+        SELECT id, name, description, created_by, created_at
+        FROM backlog_pool
+        ORDER BY created_at DESC
+    </select>
+    
+    <!-- 根据创建者查询需求池 -->
+    <select id="selectByCreatedBy" resultMap="BacklogPoolResultMap">
+        SELECT id, name, description, created_by, created_at
+        FROM backlog_pool
+        WHERE created_by = #{createdBy}
+        ORDER BY created_at DESC
+    </select>
+    
+    <!-- 根据ID删除需求池 -->
+    <delete id="deleteById">
+        DELETE FROM backlog_pool WHERE id = #{id}
+    </delete>
+    
+    <!-- 检查需求池是否存在 -->
+    <select id="existsById" resultType="int">
+        SELECT COUNT(*)
+        FROM backlog_pool
+        WHERE id = #{id}
+    </select>
+    
+</mapper>

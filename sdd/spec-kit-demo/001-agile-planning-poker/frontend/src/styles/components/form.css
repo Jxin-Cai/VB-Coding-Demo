@@ -1,0 +1,231 @@
+/**
+ * 表单组件样式统一
+ * 确保所有表单元素符合黑色主题设计系统
+ */
+
+/* ========== Input 输入框 ========== */
+
+.el-input__wrapper {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border-secondary) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--color-accent-green) !important;
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--color-accent-blue) !important;
+  box-shadow: 
+    0 0 0 3px rgba(0, 212, 255, 0.1),
+    0 0 20px rgba(0, 212, 255, 0.2) !important;
+}
+
+.el-input__inner {
+  color: var(--color-text-primary) !important;
+  font-size: 14px !important;
+}
+
+.el-input__inner::placeholder {
+  color: var(--color-text-tertiary) !important;
+}
+
+/* ========== Textarea 文本域 ========== */
+
+.el-textarea__inner {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border-secondary) !important;
+  border-radius: 8px !important;
+  color: var(--color-text-primary) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+.el-textarea__inner:hover {
+  border-color: var(--color-accent-green) !important;
+}
+
+.el-textarea__inner:focus {
+  border-color: var(--color-accent-blue) !important;
+  box-shadow: 
+    0 0 0 3px rgba(0, 212, 255, 0.1),
+    0 0 20px rgba(0, 212, 255, 0.2) !important;
+}
+
+.el-textarea__inner::placeholder {
+  color: var(--color-text-tertiary) !important;
+}
+
+/* ========== Select 下拉框 ========== */
+
+.el-select .el-input__wrapper {
+  background: var(--color-bg-secondary) !important;
+}
+
+.el-select-dropdown {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border-primary) !important;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 255, 136, 0.1) !important;
+}
+
+.el-select-dropdown__item {
+  color: var(--color-text-primary) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+.el-select-dropdown__item:hover {
+  background: var(--color-bg-tertiary) !important;
+  color: var(--color-accent-green) !important;
+}
+
+.el-select-dropdown__item.selected {
+  background: rgba(0, 255, 136, 0.1) !important;
+  color: var(--color-accent-green) !important;
+  font-weight: 600 !important;
+}
+
+/* ========== Checkbox 复选框 ========== */
+
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background: var(--color-accent-green) !important;
+  border-color: var(--color-accent-green) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.4) !important;
+}
+
+.el-checkbox__inner {
+  background: var(--color-bg-tertiary) !important;
+  border: 1px solid var(--color-border-secondary) !important;
+  border-radius: 4px !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+.el-checkbox__inner:hover {
+  border-color: var(--color-accent-green) !important;
+}
+
+.el-checkbox__label {
+  color: var(--color-text-primary) !important;
+}
+
+/* ========== Radio 单选框 ========== */
+
+.el-radio__input.is-checked .el-radio__inner {
+  background: var(--color-accent-green) !important;
+  border-color: var(--color-accent-green) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.4) !important;
+}
+
+.el-radio__inner {
+  background: var(--color-bg-tertiary) !important;
+  border: 1px solid var(--color-border-secondary) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+.el-radio__inner:hover {
+  border-color: var(--color-accent-green) !important;
+}
+
+.el-radio__label {
+  color: var(--color-text-primary) !important;
+}
+
+/* ========== Switch 开关 ========== */
+
+.el-switch.is-checked .el-switch__core {
+  background: var(--color-accent-green) !important;
+  border-color: var(--color-accent-green) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.4) !important;
+}
+
+.el-switch__core {
+  background: var(--color-bg-tertiary) !important;
+  border: 1px solid var(--color-border-secondary) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+
+/* ========== Input Number 数字输入框 ========== */
+
+.el-input-number {
+  background: var(--color-bg-secondary) !important;
+}
+
+.el-input-number .el-input__wrapper {
+  background: var(--color-bg-secondary) !important;
+}
+
+.el-input-number__decrease,
+.el-input-number__increase {
+  background: var(--color-bg-tertiary) !important;
+  border-color: var(--color-border-secondary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.el-input-number__decrease:hover,
+.el-input-number__increase:hover {
+  background: var(--color-bg-elevated) !important;
+  color: var(--color-accent-green) !important;
+}
+
+/* ========== Date Picker 日期选择器 ========== */
+
+.el-date-editor {
+  background: var(--color-bg-secondary) !important;
+}
+
+.el-date-editor .el-input__wrapper {
+  background: var(--color-bg-secondary) !important;
+}
+
+.el-picker-panel {
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border-primary) !important;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 255, 136, 0.1) !important;
+}
+
+.el-date-picker__header-label {
+  color: var(--color-text-primary) !important;
+}
+
+.el-date-table td.available:hover {
+  color: var(--color-accent-green) !important;
+}
+
+.el-date-table td.today span {
+  color: var(--color-accent-blue) !important;
+  font-weight: 600 !important;
+}
+
+.el-date-table td.current:not(.disabled) span {
+  background: var(--color-accent-green) !important;
+  color: white !important;
+}
+
+/* ========== Form Label 表单标签 ========== */
+
+.el-form-item__label {
+  color: var(--color-text-primary) !important;
+  font-weight: 500 !important;
+}
+
+.el-form-item.is-error .el-input__wrapper {
+  border-color: var(--color-accent-pink) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 136, 0.3) !important;
+}
+
+.el-form-item__error {
+  color: var(--color-accent-pink) !important;
+}
+
+/* ========== 响应式 ========== */
+
+@media (max-width: 768px) {
+  .el-input__inner {
+    font-size: 16px !important; /* 防止iOS自动缩放 */
+  }
+}

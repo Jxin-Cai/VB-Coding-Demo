@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.planningpoker.infrastructure.persistence.VotingSessionMapper">
+
+    <!-- VotingSessionPO ResultMap -->
+    <resultMap id="VotingSessionResultMap" type="VotingSessionPO">
+        <id property="storyCardId" column="story_card_id"/>
+        <result property="status" column="status"/>
+        <result property="revealedAt" column="revealed_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="hostName" column="host_name"/>
+        <result property="votingStartedAt" column="voting_started_at"/>
+        <result property="votingDeadline" column="voting_deadline"/>
+    </resultMap>
+
+    <!-- VotePO ResultMap -->
+    <resultMap id="VoteResultMap" type="VotePO">
+        <id property="id" column="id"/>
+        <result property="storyCardId" column="story_card_id"/>
+        <result property="participantName" column="participant_name"/>
+        <result property="storyPoint" column="story_point"/>
+        <result property="votedAt" column="voted_at"/>
+    </resultMap>
+
+    <!-- ParticipantPO ResultMap -->
+    <resultMap id="ParticipantResultMap" type="ParticipantPO">
+        <id property="id" column="id"/>
+        <result property="storyCardId" column="story_card_id"/>
+        <result property="participantName" column="participant_name"/>
+        <result property="joinedAt" column="joined_at"/>
+    </resultMap>
+
+    <!-- 插入或更新会话（使用MERGE实现upsert） -->
+    <insert id="insert" parameterType="VotingSessionPO">
+        MERGE INTO voting_session (story_card_id, status, revealed_at, created_at, completed_at, host_name, voting_started_at, voting_deadline)
+        KEY (story_card_id)
+        VALUES (#{storyCardId}, #{status}, #{revealedAt}, #{createdAt}, #{completedAt}, #{hostName}, #{votingStartedAt}, #{votingDeadline})
+    </insert>
+
+    <!-- 插入或更新投票（使用MERGE实现upsert） -->
+    <insert id="insertVote" parameterType="VotePO" useGeneratedKeys="true" keyProperty="id">
+        MERGE INTO vote (story_card_id, participant_name, story_point, voted_at)
+        KEY (story_card_id, participant_name)
+        VALUES (#{storyCardId}, #{participantName}, #{storyPoint}, #{votedAt})
+    </insert>
+
+    <!-- 插入或更新参与者（使用MERGE实现INSERT IGNORE） -->
+    <insert id="insertParticipant" parameterType="ParticipantPO" useGeneratedKeys="true" keyProperty="id">
+        MERGE INTO participant (story_card_id, participant_name, joined_at)
+        KEY (story_card_id, participant_name)
+        VALUES (#{storyCardId}, #{participantName}, #{joinedAt})
+    </insert>
+
+    <!-- 根据故事卡ID查询会话 -->
+    <select id="selectById" resultMap="VotingSessionResultMap">
+        SELECT * FROM voting_session WHERE story_card_id = #{id}
+    </select>
+
+
+    <!-- 查询进行中的会话 -->
+    <select id="selectActiveSession" resultMap="VotingSessionResultMap">
+        SELECT * FROM voting_session
+        WHERE status = 'IN_PROGRESS'
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 根据状态查询所有会话 -->
+    <select id="selectByStatus" resultMap="VotingSessionResultMap">
+        SELECT * FROM voting_session
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据故事卡ID和状态查询会话 -->
+    <select id="findByStoryCardIdAndStatus" resultMap="VotingSessionResultMap">
+        SELECT * FROM voting_session
+        WHERE story_card_id = #{storyCardId}
+          AND status = #{status}
+    </select>
+
+    <!-- 查询故事卡的所有投票 -->
+    <select id="selectVotesByStoryCardId" resultMap="VoteResultMap">
+        SELECT * FROM vote
+        WHERE story_card_id = #{storyCardId}
+        ORDER BY voted_at ASC
+    </select>
+
+    <!-- 查询故事卡的所有参与者 -->
+    <select id="selectParticipantsByStoryCardId" resultMap="ParticipantResultMap">
+        SELECT * FROM participant
+        WHERE story_card_id = #{storyCardId}
+        ORDER BY joined_at ASC
+    </select>
+
+    <!-- 更新会话 -->
+    <update id="update" parameterType="VotingSessionPO">
+        UPDATE voting_session
+        SET status = #{status},
+            revealed_at = #{revealedAt},
+            completed_at = #{completedAt},
+            voting_started_at = #{votingStartedAt},
+            voting_deadline = #{votingDeadline}
+        WHERE story_card_id = #{storyCardId}
+    </update>
+
+    <!-- 删除会话 -->
+    <delete id="delete">
+        DELETE FROM voting_session WHERE story_card_id = #{id}
+    </delete>
+
+    <!-- 删除故事卡的所有投票 -->
+    <delete id="deleteVotesByStoryCardId">
+        DELETE FROM vote WHERE story_card_id = #{storyCardId}
+    </delete>
+
+    <!-- 删除故事卡的所有参与者 -->
+    <delete id="deleteParticipantsByStoryCardId">
+        DELETE FROM participant WHERE story_card_id = #{storyCardId}
+    </delete>
+</mapper>

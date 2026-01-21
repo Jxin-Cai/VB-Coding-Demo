@@ -1,0 +1,66 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.iml
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# Node.js (前端)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# 前端依赖和构建产物
+# 注意：frontend/dist/ 不提交到 Git，但在本地开发时需要（IDE 从此目录读取）
+# 开发前需运行: ./build-frontend.sh
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+frontend/package-lock.json
+
+# H2 数据库文件（如果使用文件存储）
+*.db
+*.mv.db
+*.trace.db
+
+# 日志文件
+logs/
+*.log
+
+# 环境配置（如果有敏感信息）
+.env
+.env.local
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.bak
+*.swp

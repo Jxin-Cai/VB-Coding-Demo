@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.planningpoker.infrastructure.persistence.StoryCardMapper">
+    
+    <!-- StoryCardPO ResultMap -->
+    <resultMap id="StoryCardResultMap" type="StoryCardPO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="storyPoint" column="story_point"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="estimatedAt" column="estimated_at"/>
+        <result property="poolId" column="pool_id"/>
+        <result property="hostName" column="host_name"/>
+        <result property="votingSessionId" column="voting_session_id"/>
+    </resultMap>
+    
+    <!-- 插入故事卡 -->
+    <insert id="insert" parameterType="StoryCardPO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO story_card (title, description, status, story_point, created_by, created_at, estimated_at, pool_id, host_name, voting_session_id)
+        VALUES (#{title}, #{description}, #{status}, #{storyPoint}, #{createdBy}, #{createdAt}, #{estimatedAt}, #{poolId}, #{hostName}, #{votingSessionId})
+    </insert>
+    
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="StoryCardResultMap">
+        SELECT * FROM story_card WHERE id = #{id}
+    </select>
+    
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="StoryCardResultMap">
+        SELECT * FROM story_card ORDER BY created_at DESC
+    </select>
+    
+    <!-- 根据状态查询 -->
+    <select id="selectByStatus" resultMap="StoryCardResultMap">
+        SELECT * FROM story_card WHERE status = #{status} ORDER BY created_at DESC
+    </select>
+    
+    <!-- 根据需求池ID查询 -->
+    <select id="selectByPoolId" resultMap="StoryCardResultMap">
+        SELECT * FROM story_card WHERE pool_id = #{poolId} ORDER BY created_at DESC
+    </select>
+    
+    <!-- 更新故事卡 -->
+    <update id="update" parameterType="StoryCardPO">
+        UPDATE story_card
+        SET title = #{title},
+            description = #{description},
+            status = #{status},
+            story_point = #{storyPoint},
+            estimated_at = #{estimatedAt},
+            voting_session_id = #{votingSessionId}
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 删除故事卡 -->
+    <delete id="delete">
+        DELETE FROM story_card WHERE id = #{id}
+    </delete>
+</mapper>
