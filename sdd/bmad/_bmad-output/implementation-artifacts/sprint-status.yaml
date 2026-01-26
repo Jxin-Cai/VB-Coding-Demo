@@ -1,0 +1,85 @@
+# Sprint Status - bmad Project
+# Generated: 2026-01-25
+# This file tracks the development status of all epics, stories, and retrospectives
+
+# generated: 2026-01-25
+# project: bmad
+# project_key: bmad
+# tracking_system: file-system
+# story_location: /Users/jxin/Agent/VB-Coding-Demo/sdd/bmad/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-25
+project: bmad
+project_key: bmad
+tracking_system: file-system
+story_location: /Users/jxin/Agent/VB-Coding-Demo/sdd/bmad/_bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: 系统基础设施与可观测性
+  epic-1: done
+  1-1-initialize-starter-template: review
+  1-2-configure-single-process-deployment: review
+  1-3-establish-logging-and-health-check: review
+  epic-1-retrospective: optional
+
+  # Epic 2: DDL 文件管理与向量化
+  epic-2: done
+  2-1-ddl-file-upload: review
+  2-2-ddl-parsing-and-vectorization: review
+  2-3-file-status-management-and-display: review
+  2-4-multi-file-management-and-context-switching: review
+  epic-2-retrospective: optional
+
+  # Epic 3: 智能对话与 SQL 生成（含可解释性）
+  epic-3: done
+  3-1-intelligent-dialogue-interface-and-intent-recognition: review
+  3-2-agent-architecture-and-rag-retrieval-integration: review
+  3-3-sql-generation-and-syntax-validation: review
+  3-4-explainability-display-reference-sources: review
+  3-5-sql-copy-and-interaction-optimization: review
+  epic-3-retrospective: optional
+
+  # Epic 4: 多维度质量保障
+  epic-4: done
+  4-1-multi-layer-sql-validation-mechanism: review
+  4-2-output-consistency-assurance: review
+  4-3-friendly-error-handling-and-prompts: review
+  4-4-unit-testing-and-integration-testing: review
+  epic-4-retrospective: optional
+
+  # Epic 5: 前端用户体验优化
+  epic-5: done
+  5-1-responsive-layout-and-device-adaptation: review
+  5-2-visual-design-and-theme-system: review
+  5-3-interaction-feedback-and-loading-states: review
+  5-4-keyboard-shortcuts-and-accessibility: review
+  epic-5-retrospective: optional

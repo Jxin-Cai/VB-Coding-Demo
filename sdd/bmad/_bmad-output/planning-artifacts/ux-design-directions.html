@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Text-to-SQL 系统 - Design Direction Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Navigation Header */
+        .nav-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #141414;
+            border-bottom: 1px solid #404040;
+            padding: 16px 32px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .nav-header .subtitle {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-left: 16px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-tab {
+            padding: 8px 16px;
+            background: #1f1f1f;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            color: #a0a0a0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-tab:hover {
+            background: #262626;
+            color: #ffffff;
+        }
+
+        .nav-tab.active {
+            background: #FF9500;
+            color: #000000;
+            border-color: #FF9500;
+            font-weight: 500;
+        }
+
+        /* Main Container */
+        .container {
+            margin-top: 80px;
+            padding: 32px;
+        }
+
+        /* Direction Card */
+        .direction-card {
+            display: none;
+            background: #141414;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .direction-card.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .direction-header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .direction-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .direction-header .subtitle {
+            font-size: 16px;
+            color: #a0a0a0;
+        }
+
+        .direction-tags {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .tag {
+            padding: 4px 12px;
+            background: rgba(255, 149, 0, 0.15);
+            border: 1px solid rgba(255, 149, 0, 0.4);
+            border-radius: 999px;
+            font-size: 12px;
+            color: #FF9500;
+        }
+
+        /* Mockup Area */
+        .mockup-area {
+            background: #0a0a0a;
+            border: 2px solid #404040;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mockup-label {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 149, 0, 0.2);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #FF9500;
+            font-weight: 500;
+        }
+
+        /* Mockup Layouts */
+        .mockup-layout {
+            display: flex;
+            height: 100%;
+            min-height: 580px;
+            gap: 1px;
+            background: #404040;
+        }
+
+        .mockup-sidebar,
+        .mockup-main,
+        .mockup-right {
+            background: #141414;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mockup-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+        }
+
+        .mockup-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mockup-right {
+            width: 400px;
+            flex-shrink: 0;
+        }
+
+        /* Mockup Elements */
+        .mockup-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            padding: 8px;
+            background: #1f1f1f;
+            border-radius: 4px;
+        }
+
+        .mockup-item {
+            padding: 12px;
+            background: #1f1f1f;
+            border: 1px solid #303030;
+            border-radius: 4px;
+            color: #a0a0a0;
+            font-size: 13px;
+        }
+
+        .mockup-item.active {
+            border-color: #FF9500;
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .mockup-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .mockup-message {
+            padding: 12px 16px;
+            background: #1f1f1f;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 80%;
+        }
+
+        .mockup-message.user {
+            align-self: flex-end;
+            background: #262626;
+        }
+
+        .mockup-message.assistant {
+            align-self: flex-start;
+        }
+
+        .mockup-code {
+            background: #1f1f1f;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            padding: 16px;
+            font-family: Monaco, Menlo, Consolas, monospace;
+            font-size: 13px;
+            color: #569cd6;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+
+        .mockup-highlight {
+            color: #FF9500;
+            font-weight: 500;
+        }
+
+        .mockup-input {
+            padding: 12px 16px;
+            background: #1f1f1f;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* Analysis Section */
+        .analysis-section {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .analysis-card {
+            background: #1f1f1f;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .analysis-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .analysis-card p {
+            font-size: 13px;
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+
+        .analysis-card .rating {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #FF9500;
+            font-weight: 500;
+        }
+
+        /* Comparison Toggle */
+        .comparison-toggle {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            padding: 12px 24px;
+            background: #FF9500;
+            color: #000000;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(255, 149, 0, 0.4);
+            transition: all 0.2s;
+        }
+
+        .comparison-toggle:hover {
+            background: #FF9500;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.5);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #606060;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 1280px) {
+            .mockup-right {
+                width: 300px;
+            }
+            .analysis-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Direction-Specific Styles */
+        .direction-2 .mockup-sidebar,
+        .direction-2 .mockup-right {
+            width: 60px;
+            overflow: hidden;
+        }
+
+        .direction-3 .mockup-main,
+        .direction-3 .mockup-right {
+            width: 50%;
+        }
+
+        .direction-5 .mockup-sidebar,
+        .direction-5 .mockup-right {
+            display: none;
+        }
+
+        .direction-6 .mockup-layout {
+            flex-direction: column;
+        }
+
+        .direction-6 .dashboard-header {
+            height: 120px;
+            flex-direction: row;
+            gap: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <div class="nav-header">
+        <div>
+            <h1>RAG Text-to-SQL 系统 - Design Direction Mockups</h1>
+            <span class="subtitle">探索 6 种设计方向 | 基于 Ant Design 5.x + 黑色主题</span>
+        </div>
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-direction="1">Direction 1</div>
+            <div class="nav-tab" data-direction="2">Direction 2</div>
+            <div class="nav-tab" data-direction="3">Direction 3</div>
+            <div class="nav-tab" data-direction="4">Direction 4</div>
+            <div class="nav-tab" data-direction="5">Direction 5</div>
+            <div class="nav-tab" data-direction="6">Direction 6</div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Direction 1: Classic Three-Column Desktop -->
+        <div class="direction-card direction-1 active">
+            <div class="direction-header">
+                <h2>Direction 1: Classic Three-Column Desktop</h2>
+                <p class="subtitle">经典三栏桌面布局 - 信息分层清晰，适合多任务并行</p>
+                <div class="direction-tags">
+                    <span class="tag">中等密度</span>
+                    <span class="tag">固定三栏</span>
+                    <span class="tag">多任务友好</span>
+                    <span class="tag">专业工具风格</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">1920×1080 视图</div>
+                <div class="mockup-layout">
+                    <!-- Left Sidebar: History -->
+                    <div class="mockup-sidebar">
+                        <div class="mockup-title">📋 SQL 历史</div>
+                        <div class="mockup-item active">✓ 查看昨天订单量 (2分钟前)</div>
+                        <div class="mockup-item">查询用户活跃度 (10分钟前)</div>
+                        <div class="mockup-item">统计商品销量 (1小时前)</div>
+                        <div class="mockup-item">分析支付成功率 (今天)</div>
+                        <div class="mockup-item">用户留存率分析 (今天)</div>
+                    </div>
+
+                    <!-- Main: Conversation -->
+                    <div class="mockup-main">
+                        <div class="mockup-title">💬 对话区域</div>
+                        <div class="mockup-chat">
+                            <div class="mockup-message user">
+                                查看昨天的订单量
+                            </div>
+                            <div class="mockup-message assistant">
+                                ✅ SQL 生成成功！已引用：<span class="mockup-highlight">orders</span> 表
+                            </div>
+                            <div class="mockup-code">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> order_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">created_at</span> >= <span style="color: #ce9178;">CURDATE()</span> - <span style="color: #569cd6;">INTERVAL</span> <span style="color: #b5cea8;">1</span> <span style="color: #569cd6;">DAY</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">created_at</span> < <span style="color: #ce9178;">CURDATE()</span>;
+                            </div>
+                            <div class="mockup-message user">
+                                只看已支付的
+                            </div>
+                            <div class="mockup-message assistant">
+                                ✅ 已优化 SQL（版本 2）
+                            </div>
+                            <div class="mockup-code">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_order_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">created_at</span> >= <span style="color: #ce9178;">CURDATE()</span> - <span style="color: #569cd6;">INTERVAL</span> <span style="color: #b5cea8;">1</span> <span style="color: #569cd6;">DAY</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">created_at</span> < <span style="color: #ce9178;">CURDATE()</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>;
+                            </div>
+                        </div>
+                        <input type="text" class="mockup-input" placeholder="描述你想查询的数据..." />
+                    </div>
+
+                    <!-- Right Sidebar: DDL Preview -->
+                    <div class="mockup-right">
+                        <div class="mockup-title">📋 引用源 (DDL)</div>
+                        <div class="mockup-item active">
+                            <strong class="mockup-highlight">orders</strong> (订单表)
+                        </div>
+                        <div class="mockup-code" style="font-size: 12px; padding: 12px;">
+<span style="color: #6a9955;">-- 已解析 23 张表</span>
+<span style="color: #569cd6;">CREATE TABLE</span> <span class="mockup-highlight">orders</span> (
+  <span class="mockup-highlight">order_id</span> INT,
+  <span class="mockup-highlight">user_id</span> INT,
+  <span class="mockup-highlight">created_at</span> DATETIME,
+  <span class="mockup-highlight">payment_status</span> VARCHAR(20),
+  total_amount DECIMAL(10,2)
+);
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 信息分层清晰，历史/对话/引用源一目了然<br>
+                       • 固定宽度侧边栏，内容稳定不跳动<br>
+                       • 适合专业用户的多任务并行需求<br>
+                       • 符合传统桌面应用的交互习惯</p>
+                    <div class="rating">⭐ 专业感: 9/10 | 易用性: 8/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 对话区域宽度受限（600-800px）<br>
+                       • 小屏幕（< 1280px）需要收起侧边栏<br>
+                       • 视觉焦点分散，需要明确突出对话区</p>
+                    <div class="rating">适合场景: 桌面端专业用户</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• 典型的"文件管理器"式布局<br>
+                       • 适度紧凑（16px 间距）<br>
+                       • 黑色背景 + 灰色卡片营造层次<br>
+                       • 橙色高亮引导视线到关键信息</p>
+                    <div class="rating">视觉密度: 中等</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 2: Focus-Driven Center Stage -->
+        <div class="direction-card direction-2">
+            <div class="direction-header">
+                <h2>Direction 2: Focus-Driven Center Stage</h2>
+                <p class="subtitle">聚焦中心舞台 - 对话体验优先，减少视觉干扰</p>
+                <div class="direction-tags">
+                    <span class="tag">低密度</span>
+                    <span class="tag">可折叠侧边栏</span>
+                    <span class="tag">对话聚焦</span>
+                    <span class="tag">类 ChatGPT</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">对话区域占据 70% 宽度</div>
+                <div class="mockup-layout">
+                    <!-- Collapsed Left Sidebar -->
+                    <div class="mockup-sidebar" style="width: 60px; align-items: center;">
+                        <div style="font-size: 20px;">📋</div>
+                        <div style="font-size: 20px;">⚙️</div>
+                    </div>
+
+                    <!-- Main: Expanded Conversation -->
+                    <div class="mockup-main" style="max-width: 900px; margin: 0 auto;">
+                        <div style="text-align: center; margin-bottom: 32px;">
+                            <h2 style="font-size: 24px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">
+                                RAG Text-to-SQL Assistant
+                            </h2>
+                            <p style="font-size: 14px; color: #a0a0a0;">
+                                用自然语言描述，我帮你生成准确的 SQL
+                            </p>
+                        </div>
+                        <div class="mockup-chat" style="padding: 0 48px;">
+                            <div class="mockup-message user" style="max-width: 90%;">
+                                查看昨天的订单量，只看已支付的
+                            </div>
+                            <div class="mockup-message assistant" style="max-width: 100%;">
+                                ✅ SQL 生成成功！已引用：<span class="mockup-highlight">orders</span> 表
+                            </div>
+                            <div class="mockup-code" style="margin: 0 0 16px 0;">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_order_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">created_at</span> >= <span style="color: #ce9178;">CURDATE()</span> - <span style="color: #569cd6;">INTERVAL</span> <span style="color: #b5cea8;">1</span> <span style="color: #569cd6;">DAY</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">created_at</span> < <span style="color: #ce9178;">CURDATE()</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>;
+                            </div>
+                            <div style="padding: 12px; background: rgba(255, 149, 0, 0.1); border-left: 3px solid #FF9500; border-radius: 4px; font-size: 13px; color: #a0a0a0;">
+                                📋 <strong style="color: #FF9500;">引用表：</strong>orders (订单表) • 字段：order_id, created_at, payment_status
+                            </div>
+                        </div>
+                        <input type="text" class="mockup-input" placeholder="继续提问或输入新的查询需求..." style="margin-top: 24px;" />
+                    </div>
+
+                    <!-- Collapsed Right Sidebar -->
+                    <div class="mockup-right" style="width: 60px; align-items: center;">
+                        <div style="font-size: 20px;">📄</div>
+                        <div style="font-size: 20px;">🔍</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 对话区域宽敞（最大 900px），阅读舒适<br>
+                       • 视觉焦点集中，减少干扰<br>
+                       • 类 ChatGPT 体验，学习成本低<br>
+                       • 侧边栏可按需展开，灵活性高</p>
+                    <div class="rating">⭐ 专业感: 7/10 | 易用性: 9/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 历史记录和 DDL 需要额外操作查看<br>
+                       • 多任务并行能力弱（无法同时看多个信息）<br>
+                       • 折叠后图标需要清晰说明功能</p>
+                    <div class="rating">适合场景: 单任务深度交互</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• "单页应用"式布局<br>
+                       • 低密度留白（24-48px 间距）<br>
+                       • 橙色边框引导视线到引用源<br>
+                       • 极简主义，接近消费级产品体验</p>
+                    <div class="rating">视觉密度: 低</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 3: Split-Panel SQL Workshop -->
+        <div class="direction-card direction-3">
+            <div class="direction-header">
+                <h2>Direction 3: Split-Panel SQL Workshop</h2>
+                <p class="subtitle">分屏 SQL 工作坊 - SQL 结果与对话平行展示，适合快速迭代</p>
+                <div class="direction-tags">
+                    <span class="tag">高密度</span>
+                    <span class="tag">50-50 分屏</span>
+                    <span class="tag">并行展示</span>
+                    <span class="tag">开发者友好</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">左右 50-50 分屏</div>
+                <div class="mockup-layout">
+                    <!-- Left: Conversation -->
+                    <div class="mockup-main" style="width: 50%; border-right: 2px solid #404040;">
+                        <div class="mockup-title">💬 对话 & 历史</div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto;">
+                            <div style="padding: 6px 12px; background: #FF9500; color: #000; border-radius: 4px; font-size: 12px; white-space: nowrap;">✓ 昨天订单量</div>
+                            <div style="padding: 6px 12px; background: #1f1f1f; border: 1px solid #404040; color: #a0a0a0; border-radius: 4px; font-size: 12px; white-space: nowrap;">用户活跃度</div>
+                            <div style="padding: 6px 12px; background: #1f1f1f; border: 1px solid #404040; color: #a0a0a0; border-radius: 4px; font-size: 12px; white-space: nowrap;">商品销量</div>
+                        </div>
+                        <div class="mockup-chat">
+                            <div class="mockup-message user">查看昨天的订单量</div>
+                            <div class="mockup-message assistant">✅ SQL 生成成功！</div>
+                            <div class="mockup-message user">只看已支付的</div>
+                            <div class="mockup-message assistant">✅ 已优化 SQL（版本 2）</div>
+                            <div class="mockup-message user">按小时分组</div>
+                            <div class="mockup-message assistant">✅ 已优化 SQL（版本 3）</div>
+                        </div>
+                        <input type="text" class="mockup-input" placeholder="继续优化..." style="font-size: 13px;" />
+                    </div>
+
+                    <!-- Right: SQL Preview -->
+                    <div class="mockup-right" style="width: 50%;">
+                        <div class="mockup-title">📝 SQL 预览（版本 3）</div>
+                        <div class="mockup-code" style="flex: 1;">
+<span style="color: #6a9955;">-- 版本 3: 按小时分组统计</span>
+<span style="color: #569cd6;">SELECT</span> 
+  <span style="color: #569cd6;">DATE_FORMAT</span>(<span class="mockup-highlight">created_at</span>, <span style="color: #ce9178;">'%Y-%m-%d %H:00'</span>) <span style="color: #569cd6;">AS</span> hour,
+  <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_order_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">created_at</span> >= <span style="color: #ce9178;">CURDATE()</span> - <span style="color: #569cd6;">INTERVAL</span> <span style="color: #b5cea8;">1</span> <span style="color: #569cd6;">DAY</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">created_at</span> < <span style="color: #ce9178;">CURDATE()</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>
+<span style="color: #569cd6;">GROUP BY</span> hour
+<span style="color: #569cd6;">ORDER BY</span> hour;
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button style="flex: 1; padding: 8px; background: #FF9500; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">📋 复制 SQL</button>
+                            <button style="flex: 1; padding: 8px; background: #1f1f1f; color: #ffffff; border: 1px solid #404040; border-radius: 4px; cursor: pointer; font-size: 13px;">⏪ 回退到版本 2</button>
+                        </div>
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(82, 196, 26, 0.1); border-left: 3px solid #52c41a; border-radius: 4px;">
+                            <div style="font-size: 12px; color: #52c41a; font-weight: 500; margin-bottom: 4px;">📋 引用源</div>
+                            <div style="font-size: 12px; color: #a0a0a0;">
+                                <strong class="mockup-highlight">orders</strong> (订单表)<br>
+                                • created_at, payment_status
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 对话和 SQL 同时可见，快速迭代<br>
+                       • 历史以标签形式展示，节省空间<br>
+                       • 版本管理清晰，一键回退<br>
+                       • 适合开发者高频修改 SQL 的场景</p>
+                    <div class="rating">⭐ 专业感: 10/10 | 易用性: 7/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 左右分屏导致每侧宽度有限（各 ~600px）<br>
+                       • 长 SQL 需要横向滚动<br>
+                       • 学习成本高，不适合轻度用户</p>
+                    <div class="rating">适合场景: 专业开发者频繁调试</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• 类似"代码编辑器 + 终端"布局<br>
+                       • 高密度信息（8-12px 间距）<br>
+                       • 橙色按钮突出主要操作<br>
+                       • 强调工具属性，弱化对话感</p>
+                    <div class="rating">视觉密度: 高</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 4: Timeline-Based History -->
+        <div class="direction-card direction-4">
+            <div class="direction-header">
+                <h2>Direction 4: Timeline-Based History</h2>
+                <p class="subtitle">时间线式历史 - 版本关系清晰，适合追溯和对比</p>
+                <div class="direction-tags">
+                    <span class="tag">中等密度</span>
+                    <span class="tag">垂直时间线</span>
+                    <span class="tag">版本可视化</span>
+                    <span class="tag">历史友好</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">时间线式历史可视化</div>
+                <div class="mockup-layout">
+                    <!-- Left: Timeline History -->
+                    <div class="mockup-sidebar" style="width: 320px;">
+                        <div class="mockup-title">🕒 历史时间线</div>
+                        <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 8px;">
+                            <!-- Timeline Item -->
+                            <div style="display: flex; gap: 12px;">
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <div style="width: 12px; height: 12px; background: #FF9500; border-radius: 50%; border: 3px solid #141414;"></div>
+                                    <div style="width: 2px; height: 100%; background: #FF9500;"></div>
+                                </div>
+                                <div style="flex: 1; padding: 12px; background: rgba(255, 149, 0, 0.1); border: 1px solid #FF9500; border-radius: 4px;">
+                                    <div style="font-size: 13px; color: #ffffff; font-weight: 500;">昨天订单量（已支付）</div>
+                                    <div style="font-size: 11px; color: #a0a0a0; margin-top: 4px;">版本 3 • 2 分钟前</div>
+                                </div>
+                            </div>
+                            <!-- Timeline Item -->
+                            <div style="display: flex; gap: 12px;">
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <div style="width: 12px; height: 12px; background: #404040; border-radius: 50%; border: 3px solid #141414;"></div>
+                                    <div style="width: 2px; height: 100%; background: #404040;"></div>
+                                </div>
+                                <div style="flex: 1; padding: 12px; background: #1f1f1f; border: 1px solid #404040; border-radius: 4px;">
+                                    <div style="font-size: 13px; color: #a0a0a0;">用户活跃度分析</div>
+                                    <div style="font-size: 11px; color: #606060; margin-top: 4px;">10 分钟前</div>
+                                </div>
+                            </div>
+                            <!-- Timeline Item -->
+                            <div style="display: flex; gap: 12px;">
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <div style="width: 12px; height: 12px; background: #404040; border-radius: 50%; border: 3px solid #141414;"></div>
+                                    <div style="width: 2px; height: 60px; background: #404040;"></div>
+                                </div>
+                                <div style="flex: 1; padding: 12px; background: #1f1f1f; border: 1px solid #404040; border-radius: 4px;">
+                                    <div style="font-size: 13px; color: #a0a0a0;">商品销量统计</div>
+                                    <div style="font-size: 11px; color: #606060; margin-top: 4px;">1 小时前</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main: Conversation -->
+                    <div class="mockup-main">
+                        <div class="mockup-title">💬 对话区域（版本 3）</div>
+                        <div class="mockup-chat">
+                            <div style="padding: 8px 12px; background: rgba(255, 149, 0, 0.15); border-radius: 4px; font-size: 12px; color: #FF9500; margin-bottom: 12px;">
+                                🔗 版本链：版本 1 → 版本 2 → 版本 3（当前）
+                            </div>
+                            <div class="mockup-message user">查看昨天的订单量</div>
+                            <div class="mockup-message assistant">✅ SQL 生成成功（版本 1）</div>
+                            <div class="mockup-message user">只看已支付的</div>
+                            <div class="mockup-message assistant">✅ 已优化 SQL（版本 2）</div>
+                            <div class="mockup-message user">按小时分组</div>
+                            <div class="mockup-message assistant">✅ 已优化 SQL（版本 3）</div>
+                            <div class="mockup-code">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">DATE_FORMAT</span>(<span class="mockup-highlight">created_at</span>, <span style="color: #ce9178;">'%Y-%m-%d %H:00'</span>) <span style="color: #569cd6;">AS</span> hour,
+       <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>
+<span style="color: #569cd6;">GROUP BY</span> hour;
+                            </div>
+                        </div>
+                        <input type="text" class="mockup-input" placeholder="继续优化或提出新的查询..." />
+                    </div>
+
+                    <!-- Right: DDL -->
+                    <div class="mockup-right" style="width: 360px;">
+                        <div class="mockup-title">📋 引用源</div>
+                        <div class="mockup-item active">
+                            <strong class="mockup-highlight">orders</strong> (订单表)
+                        </div>
+                        <div class="mockup-code" style="font-size: 12px; padding: 12px;">
+<span style="color: #569cd6;">CREATE TABLE</span> <span class="mockup-highlight">orders</span> (
+  <span class="mockup-highlight">order_id</span> INT,
+  <span class="mockup-highlight">created_at</span> DATETIME,
+  <span class="mockup-highlight">payment_status</span> VARCHAR(20)
+);
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 时间线清晰展示历史顺序和版本关系<br>
+                       • 视觉层次分明，活跃项高亮<br>
+                       • 适合追溯和对比多个历史版本<br>
+                       • 版本链展示，理解迭代过程</p>
+                    <div class="rating">⭐ 专业感: 8/10 | 易用性: 8/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 时间线占用较多垂直空间<br>
+                       • 历史记录过多时需要滚动<br>
+                       • 时间线视觉复杂度高，需要适应</p>
+                    <div class="rating">适合场景: 需要频繁查看历史</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• "版本控制"式可视化<br>
+                       • 橙色时间线节点引导视线<br>
+                       • 中等密度（12-16px 间距）<br>
+                       • 版本链增强迭代关系理解</p>
+                    <div class="rating">视觉密度: 中等</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 5: Minimal Chat-First -->
+        <div class="direction-card direction-5">
+            <div class="direction-header">
+                <h2>Direction 5: Minimal Chat-First</h2>
+                <p class="subtitle">极简对话优先 - 专注当前对话，历史和 DDL 按需呼出</p>
+                <div class="direction-tags">
+                    <span class="tag">极低密度</span>
+                    <span class="tag">全屏对话</span>
+                    <span class="tag">浮层呼出</span>
+                    <span class="tag">消费级体验</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">全屏对话体验（类 ChatGPT）</div>
+                <div class="mockup-layout" style="justify-content: center; background: #141414;">
+                    <!-- Full-Screen Conversation -->
+                    <div class="mockup-main" style="max-width: 800px; margin: 0 auto; padding: 48px 32px;">
+                        <div style="text-align: center; margin-bottom: 48px;">
+                            <h1 style="font-size: 32px; font-weight: 600; color: #ffffff; margin-bottom: 12px;">
+                                Text-to-SQL Assistant
+                            </h1>
+                            <p style="font-size: 16px; color: #a0a0a0; line-height: 1.6;">
+                                描述你想查询的数据，我会生成准确的 SQL 🚀
+                            </p>
+                        </div>
+
+                        <div class="mockup-chat" style="padding: 0; gap: 24px;">
+                            <div class="mockup-message user" style="max-width: 85%; font-size: 15px;">
+                                查看昨天的订单量，只看已支付的，按小时分组
+                            </div>
+                            <div class="mockup-message assistant" style="max-width: 100%; background: #1f1f1f; padding: 20px;">
+                                <div style="font-size: 14px; color: #52c41a; margin-bottom: 12px; font-weight: 500;">
+                                    ✅ SQL 生成成功！
+                                </div>
+                                <div class="mockup-code" style="margin: 16px 0;">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">DATE_FORMAT</span>(<span class="mockup-highlight">created_at</span>, <span style="color: #ce9178;">'%Y-%m-%d %H:00'</span>) <span style="color: #569cd6;">AS</span> hour,
+       <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">created_at</span> >= <span style="color: #ce9178;">CURDATE()</span> - <span style="color: #569cd6;">INTERVAL</span> <span style="color: #b5cea8;">1</span> <span style="color: #569cd6;">DAY</span>
+  <span style="color: #569cd6;">AND</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>
+<span style="color: #569cd6;">GROUP BY</span> hour;
+                                </div>
+                                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                                    <button style="padding: 10px 20px; background: #FF9500; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">📋 复制 SQL</button>
+                                    <button style="padding: 10px 20px; background: #262626; color: #ffffff; border: 1px solid #404040; border-radius: 6px; cursor: pointer; font-size: 14px;">📄 查看 DDL</button>
+                                    <button style="padding: 10px 20px; background: #262626; color: #ffffff; border: 1px solid #404040; border-radius: 6px; cursor: pointer; font-size: 14px;">🕒 查看历史</button>
+                                </div>
+                                <div style="margin-top: 16px; padding: 12px; background: rgba(255, 149, 0, 0.1); border-radius: 6px; font-size: 13px; color: #a0a0a0;">
+                                    📋 <strong style="color: #FF9500;">引用表：</strong>orders • <strong style="color: #FF9500;">字段：</strong>created_at, payment_status
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 48px; position: relative;">
+                            <input type="text" class="mockup-input" placeholder="继续提问或输入新的查询需求..." style="padding: 16px 24px; font-size: 15px; border-radius: 12px;" />
+                            <div style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #FF9500; font-size: 20px;">→</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 全屏对话，无干扰，专注度高<br>
+                       • 学习成本极低，类似 ChatGPT<br>
+                       • 适合轻度用户和快速查询<br>
+                       • 视觉简洁优雅，现代感强</p>
+                    <div class="rating">⭐ 专业感: 6/10 | 易用性: 10/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 历史和 DDL 需要额外点击查看<br>
+                       • 多任务并行能力弱<br>
+                       • 专业感不足，可能显得"轻量"<br>
+                       • 不适合需要频繁对比历史的场景</p>
+                    <div class="rating">适合场景: 轻度用户快速查询</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• "聊天应用"式布局<br>
+                       • 极低密度留白（48px+ 间距）<br>
+                       • 圆角按钮（6-12px）增强亲和力<br>
+                       • 橙色按钮突出主要操作</p>
+                    <div class="rating">视觉密度: 极低</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 6: Dashboard-Style Overview -->
+        <div class="direction-card direction-6">
+            <div class="direction-header">
+                <h2>Direction 6: Dashboard-Style Overview</h2>
+                <p class="subtitle">仪表盘式总览 - 数据可视化强，适合查看整体状态</p>
+                <div class="direction-tags">
+                    <span class="tag">高密度</span>
+                    <span class="tag">数据可视化</span>
+                    <span class="tag">仪表盘布局</span>
+                    <span class="tag">状态监控</span>
+                </div>
+            </div>
+
+            <div class="mockup-area">
+                <div class="mockup-label">仪表盘式信息总览</div>
+                <div class="mockup-layout" style="flex-direction: column;">
+                    <!-- Dashboard Header -->
+                    <div class="dashboard-header" style="height: 100px; display: flex; gap: 16px; padding: 16px; background: #141414;">
+                        <div style="flex: 1; padding: 16px; background: #1f1f1f; border: 1px solid #404040; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #a0a0a0; margin-bottom: 4px;">今日生成</div>
+                            <div style="font-size: 24px; font-weight: 600; color: #52c41a;">127</div>
+                        </div>
+                        <div style="flex: 1; padding: 16px; background: #1f1f1f; border: 1px solid #404040; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #a0a0a0; margin-bottom: 4px;">成功率</div>
+                            <div style="font-size: 24px; font-weight: 600; color: #52c41a;">98.4%</div>
+                        </div>
+                        <div style="flex: 1; padding: 16px; background: #1f1f1f; border: 1px solid #404040; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #a0a0a0; margin-bottom: 4px;">引用表数</div>
+                            <div style="font-size: 24px; font-weight: 600; color: #FF9500;">23</div>
+                        </div>
+                        <div style="flex: 1; padding: 16px; background: #1f1f1f; border: 1px solid #404040; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #a0a0a0; margin-bottom: 4px;">平均迭代</div>
+                            <div style="font-size: 24px; font-weight: 600; color: #1890ff;">2.3 轮</div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div style="display: flex; flex: 1; gap: 1px; background: #404040;">
+                        <!-- Left: History -->
+                        <div class="mockup-sidebar" style="width: 280px; background: #141414;">
+                            <div class="mockup-title">📋 SQL 历史</div>
+                            <div class="mockup-item active">✓ 昨天订单量（版本 3）</div>
+                            <div class="mockup-item">用户活跃度分析</div>
+                            <div class="mockup-item">商品销量统计</div>
+                        </div>
+
+                        <!-- Center: Conversation -->
+                        <div class="mockup-main" style="background: #141414;">
+                            <div class="mockup-title">💬 对话区域</div>
+                            <div class="mockup-chat">
+                                <div class="mockup-message user">查看昨天的订单量</div>
+                                <div class="mockup-message assistant">✅ SQL 生成成功</div>
+                                <div class="mockup-code" style="font-size: 13px; padding: 12px;">
+<span style="color: #569cd6;">SELECT</span> <span style="color: #569cd6;">COUNT</span>(*) <span style="color: #569cd6;">AS</span> paid_count
+<span style="color: #569cd6;">FROM</span> <span class="mockup-highlight">orders</span>
+<span style="color: #569cd6;">WHERE</span> <span class="mockup-highlight">payment_status</span> = <span style="color: #ce9178;">'paid'</span>;
+                                </div>
+                            </div>
+                            <input type="text" class="mockup-input" placeholder="输入查询..." style="font-size: 13px;" />
+                        </div>
+
+                        <!-- Right: DDL -->
+                        <div class="mockup-right" style="width: 360px; background: #141414;">
+                            <div class="mockup-title">📋 引用源 & DDL</div>
+                            <div class="mockup-item active">
+                                <strong class="mockup-highlight">orders</strong> (订单表)
+                            </div>
+                            <div class="mockup-code" style="font-size: 12px; padding: 12px;">
+<span style="color: #569cd6;">CREATE TABLE</span> <span class="mockup-highlight">orders</span> (
+  <span class="mockup-highlight">order_id</span> INT,
+  <span class="mockup-highlight">payment_status</span> VARCHAR(20)
+);
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action Bar -->
+                    <div style="height: 60px; display: flex; gap: 12px; align-items: center; padding: 0 24px; background: #1f1f1f; border-top: 1px solid #404040;">
+                        <button style="padding: 8px 16px; background: #FF9500; color: #000; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">📋 复制 SQL</button>
+                        <button style="padding: 8px 16px; background: #262626; color: #ffffff; border: 1px solid #404040; border-radius: 6px; cursor: pointer; font-size: 13px;">⏪ 回退版本</button>
+                        <button style="padding: 8px 16px; background: #262626; color: #ffffff; border: 1px solid #404040; border-radius: 6px; cursor: pointer; font-size: 13px;">💾 保存到历史</button>
+                        <div style="flex: 1;"></div>
+                        <div style="font-size: 12px; color: #a0a0a0;">⚡ Agent 工作中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-card">
+                    <h3>✅ 优点</h3>
+                    <p>• 顶部统计卡片直观展示系统状态<br>
+                       • 信息密度高，适合监控和管理<br>
+                       • 底部操作栏集中快捷操作<br>
+                       • 适合企业级应用和数据分析场景</p>
+                    <div class="rating">⭐ 专业感: 9/10 | 易用性: 7/10</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>⚠️ 注意点</h3>
+                    <p>• 视觉复杂度高，学习成本高<br>
+                       • 顶部统计卡片占用垂直空间<br>
+                       • 底部操作栏可能与对话区重叠<br>
+                       • 适合有管理需求的用户</p>
+                    <div class="rating">适合场景: 企业级管理和监控</div>
+                </div>
+                <div class="analysis-card">
+                    <h3>🎨 设计特点</h3>
+                    <p>• "管理后台"式布局<br>
+                       • 高密度信息（8-16px 间距）<br>
+                       • 数据可视化强调关键指标<br>
+                       • 橙色突出主要操作按钮</p>
+                    <div class="rating">视觉密度: 高</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Toggle Button -->
+    <button class="comparison-toggle">💡 设计评估指南</button>
+
+    <script>
+        // Tab Switching
+        const tabs = document.querySelectorAll('.nav-tab');
+        const cards = document.querySelectorAll('.direction-card');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const direction = tab.dataset.direction;
+                
+                // Update tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update cards
+                cards.forEach(c => c.classList.remove('active'));
+                document.querySelector(`.direction-${direction}`).classList.add('active');
+            });
+        });
+
+        // Comparison Toggle
+        const toggleBtn = document.querySelector('.comparison-toggle');
+        toggleBtn.addEventListener('click', () => {
+            alert(`🎨 设计评估标准：
+
+✅ 布局直观性 - 信息层级是否符合优先级？
+✅ 交互风格 - 是否支持核心体验（多轮对话）？
+✅ 视觉重量 - 密度是否适合目标用户？
+✅ 导航方式 - 历史和 DDL 的访问是否方便？
+✅ 组件使用 - 组件是否支持用户旅程？
+✅ 品牌对齐 - 是否传达专业和可信赖？
+
+💡 提示：可以选择一个方向作为基础，再融合其他方向的优点！`);
+        });
+    </script>
+</body>
+</html>
