@@ -1,0 +1,44 @@
+/**
+ * Monaco Editor 全局样式
+ * 橙色高亮引用源
+ */
+
+/* 引用源高亮（橙色）*/
+.highlight-reference {
+  color: #FF9500 !important;
+  font-weight: 500 !important;
+  background: rgba(255, 149, 0, 0.15) !important;
+  padding: 2px 4px !important;
+  border-radius: 2px !important;
+}
+
+/* 字段高亮（橙色）*/
+.highlight-field {
+  color: #FF9500 !important;
+  font-weight: 600 !important;
+  background: rgba(255, 149, 0, 0.15) !important;
+  padding: 2px 4px !important;
+  border-radius: 2px !important;
+}
+
+/* 高亮左侧标记 */
+.highlight-glyph {
+  background: #FF9500 !important;
+  width: 4px !important;
+  margin-left: 3px !important;
+  border-radius: 2px !important;
+}
+
+/* Monaco Editor 滚动条样式 */
+.monaco-editor .scrollbar {
+  background: transparent !important;
+}
+
+.monaco-editor .slider {
+  background: #303030 !important;
+  border-radius: 4px !important;
+}
+
+.monaco-editor .slider:hover {
+  background: #404040 !important;
+}
