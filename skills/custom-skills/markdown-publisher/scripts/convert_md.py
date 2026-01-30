@@ -29,11 +29,22 @@ def load_theme(theme_name):
         return json.load(f)
 
 def get_mmdc_path():
-    # Attempt to find mmdc in the skill's node_modules
+    # First, try to find mmdc in system PATH
+    try:
+        result = subprocess.run(['which', 'mmdc'], capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            mmdc_path = result.stdout.strip()
+            if mmdc_path and os.path.exists(mmdc_path):
+                return mmdc_path
+    except:
+        pass
+    
+    # Fallback: Attempt to find mmdc in the skill's node_modules
     script_dir = os.path.dirname(os.path.abspath(__file__))
     mmdc_path = os.path.join(script_dir, '..', 'node_modules', '.bin', 'mmdc')
     if os.path.exists(mmdc_path):
         return mmdc_path
+    
     return None
 
 def apply_style(tag, content, theme, extra_attrs=""):

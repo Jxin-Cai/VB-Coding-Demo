@@ -135,6 +135,11 @@ graph TD
 
 所有代码块语言，包括但不限于：YAML、JSON、Python、JavaScript、Java、Shell、XML、SQL 等。
 
+**重要说明**：
+
+- ⚠️ **Mermaid 图表不应用空格保护**：Mermaid 代码块会被单独处理，转换为 PNG 图片，不会应用空格保护机制
+- ✅ **两者完全分离**：普通代码块和 Mermaid 图表的处理流程完全独立，互不干扰
+
 **示例**：
 
 输入：
