@@ -456,7 +456,36 @@ def convert_markdown(text, theme, input_file_dir='.'):
 
                 else:
                     # Regular code block
+                    # Escape HTML characters
                     code_content = code_content.replace('<', '&lt;').replace('>', '&gt;')
+                    
+                    # Preserve formatting: convert spaces to prevent collapse in rich text editors
+                    # Strategy: Replace leading spaces with &nbsp; and alternate &nbsp; with space for consecutive spaces
+                    def preserve_spaces(text):
+                        """Convert spaces to &nbsp; pattern to prevent collapse while keeping text selectable."""
+                        result = []
+                        i = 0
+                        while i < len(text):
+                            if text[i] == ' ':
+                                # Count consecutive spaces
+                                space_count = 0
+                                while i < len(text) and text[i] == ' ':
+                                    space_count += 1
+                                    i += 1
+                                
+                                # Convert to alternating pattern: &nbsp; space &nbsp; space...
+                                # This prevents collapse while keeping selectability
+                                for j in range(space_count):
+                                    if j % 2 == 0:
+                                        result.append('&nbsp;')
+                                    else:
+                                        result.append(' ')
+                            else:
+                                result.append(text[i])
+                                i += 1
+                        return ''.join(result)
+                    
+                    code_content = preserve_spaces(code_content)
                     block_html = f'<pre style="{style_code_wrapper}"><code style="{style_code}">{code_content}</code></pre>'
                     html_lines.append(block_html)
                 
