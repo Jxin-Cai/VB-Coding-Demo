@@ -602,6 +602,9 @@ export class GeminiClient {
       "f.req": fReq,
     }).toString();
 
+    // ✅ 明确使用UTF-8编码转换为Uint8Array，避免中文乱码
+    const bodyBytes = new TextEncoder().encode(body);
+
     const cookieStr = Object.entries(this.cookies)
       .map(([k, v]) => `${k}=${v}`)
       .join("; ");
@@ -612,11 +615,11 @@ export class GeminiClient {
       Cookie: cookieStr,
     };
 
-    // 发送请求
+    // 发送请求（使用UTF-8编码的字节流）
     const res = await fetch(GENERATE_ENDPOINT, {
       method: "POST",
       headers,
-      body,
+      body: bodyBytes,  // ✅ 使用UTF-8编码的字节流
       signal: AbortSignal.timeout(300000), // 5 分钟超时
     });
 
